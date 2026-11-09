@@ -36,6 +36,8 @@ If you need a different app identifier, set it on the app target in Xcode or cha
 - **Connection diagnostics** includes service identifiers, revision information, and packet counts. Review the report before posting it publicly. Share synthetic examples rather than personal readings or app-container exports.
 - Charts summarize the readings available from the ring. Sleep and device indices are estimates. Color bands describe duration, ring scores, personal baselines, or reference comparisons. Heart-rate history may include activity, even when compared with a resting reference.
 
+See [Local data storage](docs/local-data.md) for what the app saves, how sync handles repeated readings, and what happens when you disconnect or forget a ring.
+
 ## Development
 
 The shared Xcode project is checked in. Use `xcodegen generate` after editing `project.yml`.
