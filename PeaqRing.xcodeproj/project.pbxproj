@@ -1,0 +1,646 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */; };
+		1CEF8A5C6A61DFADF884CAE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 922012732F56F83B0BCF858A /* Assets.xcassets */; };
+		2A6BC39C47444D672B81BE5F /* PeaqRingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */; };
+		2E2DC09BE8B4F02329B93E74 /* RingExtendedHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7F1902D381ED5945EBDB4E /* RingExtendedHistory.swift */; };
+		33F21958D2B6058A0F3A34C3 /* RingDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DE058663B8C96E3FF0DE92 /* RingDeviceView.swift */; };
+		3642EE7938F241E3B922728F /* RingWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87EBAFE7C10358F226E1AF06 /* RingWire.swift */; };
+		4316D1A40FE564EFCE0D7E40 /* RingDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED320FA17F276BBB9C10B54A /* RingDiscovery.swift */; };
+		49DEA06D92595358AB74514B /* RingMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BD27D60EC7C4A8CF6750E1 /* RingMetric.swift */; };
+		50A683B8EF1E5638C7ED6E8A /* MetricReferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056B973CD2B2E9664358B596 /* MetricReferenceView.swift */; };
+		5D499060B6BE23D364D97A59 /* RingBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 956F3C339E4E63E6C8810579 /* RingBluetooth.swift */; };
+		63270A6B04822AA741A4284B /* RingBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF48B6D5C7A2B3CE10304C5 /* RingBattery.swift */; };
+		82088C37BC41A52DDC8FF828 /* RingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */; };
+		87630FF5804EDB62651BAA90 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A93697559E6BE30788115EE /* InsightsView.swift */; };
+		93F17F51FF1E446C28AA0CC4 /* MetricReferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09992201299A3D32BC3C8776 /* MetricReferences.swift */; };
+		A5B68AC55F2EE4A749771959 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3068649493D2C16D1E9A4356 /* ContentView.swift */; };
+		AAD9B670E561C1AF0B18C6BC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */; };
+		AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3054E0847294C864C2E95815 /* RingDeviceInformation.swift */; };
+		C832CBE122FC3A6FDAA3D630 /* RingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */; };
+		C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */; };
+		EF74690757F298AADF7FF87A /* ReferencePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */; };
+		F0A7C7B2481BD84301AF8C6E /* RingHistoryAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4F9A32414DC4A49564AA97 /* RingHistoryAccess.swift */; };
+		F35E06CBF516FCA8FA94A0BC /* PeaqRingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B4794F3CBE3E78D08F44E4B /* PeaqRingApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2C55562FBA9388F46852D849 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71961B1CA9A7079ECBDD52CA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F3FD2CB45EB98F63CA748F1A;
+			remoteInfo = PeaqRing;
+		};
+		F520459799985CC6DD497311 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71961B1CA9A7079ECBDD52CA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F3FD2CB45EB98F63CA748F1A;
+			remoteInfo = PeaqRing;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		056B973CD2B2E9664358B596 /* MetricReferenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricReferenceView.swift; sourceTree = "<group>"; };
+		09992201299A3D32BC3C8776 /* MetricReferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricReferences.swift; sourceTree = "<group>"; };
+		0EFD2654A601A5175F15CC6D /* PeaqRing.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PeaqRing.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingStore.swift; sourceTree = "<group>"; };
+		12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferencePreferencesTests.swift; sourceTree = "<group>"; };
+		3054E0847294C864C2E95815 /* RingDeviceInformation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDeviceInformation.swift; sourceTree = "<group>"; };
+		3068649493D2C16D1E9A4356 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		44BD27D60EC7C4A8CF6750E1 /* RingMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingMetric.swift; sourceTree = "<group>"; };
+		479D85DA92C9CF994695078A /* PeaqRingUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PeaqRingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B4794F3CBE3E78D08F44E4B /* PeaqRingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeaqRingApp.swift; sourceTree = "<group>"; };
+		4D4F9A32414DC4A49564AA97 /* RingHistoryAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingHistoryAccess.swift; sourceTree = "<group>"; };
+		5AF48B6D5C7A2B3CE10304C5 /* RingBattery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBattery.swift; sourceTree = "<group>"; };
+		62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStorageTests.swift; sourceTree = "<group>"; };
+		697510472BACEEF5F3118BE9 /* PeaqRingTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PeaqRingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B7F1902D381ED5945EBDB4E /* RingExtendedHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingExtendedHistory.swift; sourceTree = "<group>"; };
+		87EBAFE7C10358F226E1AF06 /* RingWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingWire.swift; sourceTree = "<group>"; };
+		8A93697559E6BE30788115EE /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
+		922012732F56F83B0BCF858A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		956F3C339E4E63E6C8810579 /* RingBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBluetooth.swift; sourceTree = "<group>"; };
+		97DE058663B8C96E3FF0DE92 /* RingDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDeviceView.swift; sourceTree = "<group>"; };
+		99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingSettingsView.swift; sourceTree = "<group>"; };
+		AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeaqRingUITests.swift; sourceTree = "<group>"; };
+		BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		DC556AA1FCC8518659DD6E5E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ED320FA17F276BBB9C10B54A /* RingDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDiscovery.swift; sourceTree = "<group>"; };
+		F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferencePreferences.swift; sourceTree = "<group>"; };
+		F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		08419CF3B66D9F04A9432583 /* PeaqRing */ = {
+			isa = PBXGroup;
+			children = (
+				88EA13892734D4AA7296318B /* App */,
+				67F4192C31997EB01629EF63 /* Bluetooth */,
+				1B4403E3EE59B0B0FF440017 /* Data */,
+				56C9D233837C33DD23EDF888 /* Resources */,
+				94FC92AAB1C2CEA5473830B4 /* Views */,
+			);
+			path = PeaqRing;
+			sourceTree = "<group>";
+		};
+		1B4403E3EE59B0B0FF440017 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */,
+				105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		46B084CDB5E117972AB81CEB /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		56C9D233837C33DD23EDF888 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				922012732F56F83B0BCF858A /* Assets.xcassets */,
+				DC556AA1FCC8518659DD6E5E /* Info.plist */,
+				F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		67F4192C31997EB01629EF63 /* Bluetooth */ = {
+			isa = PBXGroup;
+			children = (
+				956F3C339E4E63E6C8810579 /* RingBluetooth.swift */,
+			);
+			path = Bluetooth;
+			sourceTree = "<group>";
+		};
+		88EA13892734D4AA7296318B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				4B4794F3CBE3E78D08F44E4B /* PeaqRingApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		94FC92AAB1C2CEA5473830B4 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3068649493D2C16D1E9A4356 /* ContentView.swift */,
+				8A93697559E6BE30788115EE /* InsightsView.swift */,
+				056B973CD2B2E9664358B596 /* MetricReferenceView.swift */,
+				97DE058663B8C96E3FF0DE92 /* RingDeviceView.swift */,
+				99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A63AF6A408EF101D47CB3D07 /* PeaqRingTests */ = {
+			isa = PBXGroup;
+			children = (
+				62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */,
+				12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */,
+			);
+			path = PeaqRingTests;
+			sourceTree = "<group>";
+		};
+		AECD38D55E887DA7D6C9B974 /* RingProtocol */ = {
+			isa = PBXGroup;
+			children = (
+				09992201299A3D32BC3C8776 /* MetricReferences.swift */,
+				5AF48B6D5C7A2B3CE10304C5 /* RingBattery.swift */,
+				3054E0847294C864C2E95815 /* RingDeviceInformation.swift */,
+				ED320FA17F276BBB9C10B54A /* RingDiscovery.swift */,
+				6B7F1902D381ED5945EBDB4E /* RingExtendedHistory.swift */,
+				4D4F9A32414DC4A49564AA97 /* RingHistoryAccess.swift */,
+				44BD27D60EC7C4A8CF6750E1 /* RingMetric.swift */,
+				87EBAFE7C10358F226E1AF06 /* RingWire.swift */,
+			);
+			name = RingProtocol;
+			path = Sources/RingProtocol;
+			sourceTree = "<group>";
+		};
+		B435349965DC951576D4F79D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0EFD2654A601A5175F15CC6D /* PeaqRing.app */,
+				697510472BACEEF5F3118BE9 /* PeaqRingTests.xctest */,
+				479D85DA92C9CF994695078A /* PeaqRingUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C0A7E0FE85A174D5C9754238 /* PeaqRingUITests */ = {
+			isa = PBXGroup;
+			children = (
+				AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */,
+			);
+			path = PeaqRingUITests;
+			sourceTree = "<group>";
+		};
+		FB6F80DBC8389D057F1EF502 = {
+			isa = PBXGroup;
+			children = (
+				46B084CDB5E117972AB81CEB /* Config */,
+				08419CF3B66D9F04A9432583 /* PeaqRing */,
+				A63AF6A408EF101D47CB3D07 /* PeaqRingTests */,
+				C0A7E0FE85A174D5C9754238 /* PeaqRingUITests */,
+				AECD38D55E887DA7D6C9B974 /* RingProtocol */,
+				B435349965DC951576D4F79D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		08214409524C21D832DB3317 /* PeaqRingUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DB76E47EBFD43D5A88DB95DF /* Build configuration list for PBXNativeTarget "PeaqRingUITests" */;
+			buildPhases = (
+				EF643D67E05402D404046BEA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				58B3A639E38E6B3F57B507EB /* PBXTargetDependency */,
+			);
+			name = PeaqRingUITests;
+			packageProductDependencies = (
+			);
+			productName = PeaqRingUITests;
+			productReference = 479D85DA92C9CF994695078A /* PeaqRingUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		6B535C1D10C0864A68273658 /* PeaqRingTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B2925486043B753549ABD48 /* Build configuration list for PBXNativeTarget "PeaqRingTests" */;
+			buildPhases = (
+				9CF0F6DE574075A28B41769A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F27AEE1E5D2E133309E16F81 /* PBXTargetDependency */,
+			);
+			name = PeaqRingTests;
+			packageProductDependencies = (
+			);
+			productName = PeaqRingTests;
+			productReference = 697510472BACEEF5F3118BE9 /* PeaqRingTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F3FD2CB45EB98F63CA748F1A /* PeaqRing */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14AFFD5A01DE6B84F15F3DF4 /* Build configuration list for PBXNativeTarget "PeaqRing" */;
+			buildPhases = (
+				846F88AB37707A2BC576128E /* Sources */,
+				FC74DB34624F7AED92EA89CD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PeaqRing;
+			packageProductDependencies = (
+			);
+			productName = PeaqRing;
+			productReference = 0EFD2654A601A5175F15CC6D /* PeaqRing.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		71961B1CA9A7079ECBDD52CA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					08214409524C21D832DB3317 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = F3FD2CB45EB98F63CA748F1A;
+					};
+					6B535C1D10C0864A68273658 = {
+						ProvisioningStyle = Automatic;
+					};
+					F3FD2CB45EB98F63CA748F1A = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = F3F2BC83368B695903C4C496 /* Build configuration list for PBXProject "PeaqRing" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FB6F80DBC8389D057F1EF502;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B435349965DC951576D4F79D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F3FD2CB45EB98F63CA748F1A /* PeaqRing */,
+				6B535C1D10C0864A68273658 /* PeaqRingTests */,
+				08214409524C21D832DB3317 /* PeaqRingUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FC74DB34624F7AED92EA89CD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CEF8A5C6A61DFADF884CAE5 /* Assets.xcassets in Resources */,
+				AAD9B670E561C1AF0B18C6BC /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		846F88AB37707A2BC576128E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5B68AC55F2EE4A749771959 /* ContentView.swift in Sources */,
+				87630FF5804EDB62651BAA90 /* InsightsView.swift in Sources */,
+				50A683B8EF1E5638C7ED6E8A /* MetricReferenceView.swift in Sources */,
+				93F17F51FF1E446C28AA0CC4 /* MetricReferences.swift in Sources */,
+				F35E06CBF516FCA8FA94A0BC /* PeaqRingApp.swift in Sources */,
+				EF74690757F298AADF7FF87A /* ReferencePreferences.swift in Sources */,
+				63270A6B04822AA741A4284B /* RingBattery.swift in Sources */,
+				5D499060B6BE23D364D97A59 /* RingBluetooth.swift in Sources */,
+				AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */,
+				33F21958D2B6058A0F3A34C3 /* RingDeviceView.swift in Sources */,
+				4316D1A40FE564EFCE0D7E40 /* RingDiscovery.swift in Sources */,
+				2E2DC09BE8B4F02329B93E74 /* RingExtendedHistory.swift in Sources */,
+				F0A7C7B2481BD84301AF8C6E /* RingHistoryAccess.swift in Sources */,
+				49DEA06D92595358AB74514B /* RingMetric.swift in Sources */,
+				82088C37BC41A52DDC8FF828 /* RingSettingsView.swift in Sources */,
+				C832CBE122FC3A6FDAA3D630 /* RingStore.swift in Sources */,
+				3642EE7938F241E3B922728F /* RingWire.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9CF0F6DE574075A28B41769A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */,
+				C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF643D67E05402D404046BEA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2A6BC39C47444D672B81BE5F /* PeaqRingUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		58B3A639E38E6B3F57B507EB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F3FD2CB45EB98F63CA748F1A /* PeaqRing */;
+			targetProxy = F520459799985CC6DD497311 /* PBXContainerItemProxy */;
+		};
+		F27AEE1E5D2E133309E16F81 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F3FD2CB45EB98F63CA748F1A /* PeaqRing */;
+			targetProxy = 2C55562FBA9388F46852D849 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0993A81D7A09D6B133FF8A12 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.PeaqRingTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeaqRing.app/PeaqRing";
+			};
+			name = Release;
+		};
+		2E9EDB2AAD02675F91256191 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		30477F70C721007DCCBF1489 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PeaqRing/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		706191B5012AE24089A4C72B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		90E8FB9464C9B855D3E98558 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PeaqRing/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D4273D9067C9168C45CAA6B4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.PeaqRingTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeaqRing.app/PeaqRing";
+			};
+			name = Debug;
+		};
+		DD25861B3DBE47D94EAB03FE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.PeaqRingUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PeaqRing;
+			};
+			name = Release;
+		};
+		F1E5D35F26BF1EE3FD872FB5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.PeaqRingUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PeaqRing;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14AFFD5A01DE6B84F15F3DF4 /* Build configuration list for PBXNativeTarget "PeaqRing" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30477F70C721007DCCBF1489 /* Debug */,
+				90E8FB9464C9B855D3E98558 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1B2925486043B753549ABD48 /* Build configuration list for PBXNativeTarget "PeaqRingTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D4273D9067C9168C45CAA6B4 /* Debug */,
+				0993A81D7A09D6B133FF8A12 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DB76E47EBFD43D5A88DB95DF /* Build configuration list for PBXNativeTarget "PeaqRingUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1E5D35F26BF1EE3FD872FB5 /* Debug */,
+				DD25861B3DBE47D94EAB03FE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F3F2BC83368B695903C4C496 /* Build configuration list for PBXProject "PeaqRing" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				706191B5012AE24089A4C72B /* Debug */,
+				2E9EDB2AAD02675F91256191 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 71961B1CA9A7079ECBDD52CA /* Project object */;
+}

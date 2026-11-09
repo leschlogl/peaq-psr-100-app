@@ -1,0 +1,19 @@
+name: Build and test
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Protocol tests
+        run: swift test
+      - name: Unsigned iOS build
+        run: |
+          xcodebuild -project PeaqRing.xcodeproj -scheme PeaqRing \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/CI CODE_SIGNING_ALLOWED=NO build
