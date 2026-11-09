@@ -7,7 +7,9 @@ An unofficial iPhone companion for the **PEAQ PSR 100** smart ring. It reads the
 - **My ring** shows connection status, battery, firmware information, and shareable diagnostics.
 - **Settings** holds activity goals, the optional reference profile, and the foreground sync interval.
 
-![Example trend with synthetic heart-rate readings](docs/trend-example.png)
+<img src="docs/today-example.png" width="360" alt="My PEAQ Today screen showing activity goals and health cards with sample readings">
+
+*Today screen with sample readings.*
 
 ## Build and run
 
