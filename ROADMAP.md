@@ -2,6 +2,14 @@
 
 My PEAQ already shows sleep history, activity goals, workouts, PAI, and health trends from the PEAQ PSR 100. The next features will help people see what changed, compare it with their usual patterns, and record what was different that day.
 
+## Implemented in 0.4.0
+
+### 7. Sync history and data freshness
+
+- Show the latest sync outcome and saved counts in **My Ring**, alongside the last successful sync.
+- Keep up to 30 recent attempts per ring and distinguish completed syncs with no changes from failures and interruptions.
+- Show separate freshness dates for saved sleep, activity, and heart readings.
+
 ## Implemented in 0.3.0
 
 ### 1. Sleep timing and regularity
@@ -41,11 +49,6 @@ My PEAQ already shows sleep history, activity goals, workouts, PAI, and health t
 - Add a Home Screen widget for steps toward goal, last night's sleep, or the latest ring sync.
 
 ## Additional priorities
-
-### 7. Sync history and data freshness
-
-- Show when each metric last received a reading and summarize what the latest sync imported.
-- Distinguish a sync still in progress from a completed sync with no new readings. Show gaps in recorded data.
 
 ### 8. Sleep corrections and nap management
 

@@ -39,6 +39,7 @@ final class RingBluetooth: NSObject, ObservableObject {
     @Published private(set) var logs: [RingLog] = []
     @Published private(set) var selectedID: String = UserDefaults.standard.string(forKey: "ringID") ?? ""
     @Published private(set) var lastSync: Date?
+    @Published private(set) var syncHistory: [RingSyncEntry] = []
     @Published private(set) var syncMessage = "History has not been synced yet."
     @Published private(set) var receivedReadings = 0
     @Published private(set) var hasSessionToken = false
@@ -81,6 +82,8 @@ final class RingBluetooth: NSObject, ObservableObject {
     private var backgroundLease: UIBackgroundTaskIdentifier = .invalid
     private var lastAttempt: Date?
     private var syncStorageFailed = false
+    private var syncImports = RingImportChanges()
+    private var syncInterruption = RingSyncEntry.Outcome.interrupted
     static let reconnectPausedKey = "automaticReconnectPaused"
     private(set) var autoReconnect = !UserDefaults.standard.bool(forKey: RingBluetooth.reconnectPausedKey)
     private var pendingScan = false
@@ -92,6 +95,7 @@ final class RingBluetooth: NSObject, ObservableObject {
         for key in ["experimentalSync", "autoSync", "demoMode"] { UserDefaults.standard.removeObject(forKey: key) }
         if !selectedID.isEmpty {
             lastSync = UserDefaults.standard.object(forKey: "lastSync.\(selectedID)") as? Date
+            syncHistory = RingSyncEntry.load(ringID: selectedID)
             tokenFreeHistoryConfirmed = UserDefaults.standard.bool(forKey: "tokenFreeHistory.\(selectedID)")
             refreshSessionTokenState()
             activate()
@@ -225,6 +229,7 @@ final class RingBluetooth: NSObject, ObservableObject {
             UserDefaults.standard.set(selectedID, forKey: "ringID")
             battery = nil
             lastSync = UserDefaults.standard.object(forKey: "lastSync.\(selectedID)") as? Date
+            syncHistory = RingSyncEntry.load(ringID: selectedID)
             syncMessage = "History has not been synced yet."
             lastAttempt = nil
             tokenFreeHistoryConfirmed = UserDefaults.standard.bool(forKey: "tokenFreeHistory.\(selectedID)")
@@ -281,6 +286,7 @@ final class RingBluetooth: NSObject, ObservableObject {
         tokenFreeHistoryConfirmed = false
         UserDefaults.standard.removeObject(forKey: "ringID")
         lastSync = nil
+        syncHistory = []
         lastAttempt = nil
         status = "Connect your ring"
         // History and Keychain token remain associated with their original peripheral ID.
@@ -329,16 +335,26 @@ final class RingBluetooth: NSObject, ObservableObject {
         let elapsed = Date().timeIntervalSince(lastAttempt ?? .distantPast)
         if elapsed >= Double(intervalMinutes) * 60 { sync() }
     }
+    func requestSync() {
+        if isConnected {
+            sync()
+        } else if !selectedID.isEmpty && !isConnecting {
+            lastAttempt = nil
+            reconnect()
+        }
+    }
+
     func sync() {
         guard !isSyncing else { return }
         refreshSessionTokenState()
+        let ringID = selectedID
         guard historyAccess.canRequest else {
             syncMessage = historyAccess.explanation
             log("History request skipped: \(historyAccess.title).")
             return
         }
         guard let worker = historyWorker else {
-            syncMessage = "Local history is unavailable. Retry opening it before syncing."
+            completeSync(.storageFailure, ringID: ringID)
             return
         }
         let token = TokenVault.read(ringID: selectedID)
@@ -347,12 +363,14 @@ final class RingBluetooth: NSObject, ObservableObject {
         do {
             commands = useTokenFreeQueries ? RingWire.historyQueries() : try RingWire.historyCommands(token: token)
         }
-        catch { syncMessage = "The saved connection credentials could not be used. Check Connection diagnostics."; return }
+        catch { completeSync(.credentials, ringID: ringID); return }
         log(useTokenFreeQueries ? "Starting token-free history queries." : "Starting experimental session and history requests. Authentication is not yet confirmed.")
         lastAttempt = Date()
         isSyncing = true
         receivedReadings = 0
         syncStorageFailed = false
+        syncImports = RingImportChanges()
+        syncInterruption = .interrupted
         resetHistorySession()
         syncMessage = "Requesting ring history…"
         backgroundLease = UIApplication.shared.beginBackgroundTask(withName: "Ring history sync") { [weak self] in
@@ -372,36 +390,41 @@ final class RingBluetooth: NSObject, ObservableObject {
                 await worker.flush()
                 try Task.checkCancellation()
                 if self.syncStorageFailed {
-                    self.syncMessage = "History arrived but could not all be saved. Check available iPhone storage and retry."
+                    self.completeSync(.storageFailure, ringID: ringID)
                 } else if self.receivedReadings > 0 {
                     if useTokenFreeQueries {
-                        self.tokenFreeHistoryConfirmed = true
-                        UserDefaults.standard.set(true, forKey: "tokenFreeHistory.\(self.selectedID)")
+                        UserDefaults.standard.set(true, forKey: "tokenFreeHistory.\(ringID)")
+                        if self.selectedID == ringID { self.tokenFreeHistoryConfirmed = true }
                     }
-                    let now = Date()
-                    self.lastSync = now
-                    UserDefaults.standard.set(now, forKey: "lastSync.\(self.selectedID)")
-                    self.syncMessage = "Received \(self.receivedReadings) readings. Repeated history is merged."
+                    self.completeSync(self.syncImports.isEmpty ? .noChanges : .imported,
+                                      ringID: ringID, changes: self.syncImports)
                 } else {
-                    self.syncMessage = useTokenFreeQueries
-                        ? "No new readings received. Try syncing again when the ring has recorded more data."
-                        : "No decoded history received. The session token, handshake, or firmware may differ. Check Connection diagnostics for notification and rejected-packet counts."
+                    self.completeSync(.noResponse, ringID: ringID)
                 }
-                self.log("History attempt finished: \(self.receivedReadings) readings saved; token-free=\(useTokenFreeQueries).")
+                self.log("History attempt finished: \(self.receivedReadings) decoded readings processed; token-free=\(useTokenFreeQueries).")
                 self.readBattery(requestRingStatus: false)
-            } catch is CancellationError {
-                await worker.flush()
-                self.syncMessage = "Sync interrupted. Saved readings are kept."
             } catch {
                 await worker.flush()
-                self.syncMessage = error.localizedDescription
-                self.log("History request failed. Check connection and session settings.")
+                let outcome = Task.isCancelled || error is CancellationError ? self.syncInterruption : .connectionFailure
+                self.completeSync(outcome, ringID: ringID)
             }
         }
     }
-    func cancelSync() {
+    func cancelSync(connectionLost: Bool = false) {
+        if connectionLost && syncTask?.isCancelled == false { syncInterruption = .connectionFailure }
         syncTask?.cancel()
         resolveWrite(.failure(CancellationError()))
+    }
+
+    private func completeSync(_ outcome: RingSyncEntry.Outcome, ringID: String, changes: RingImportChanges = RingImportChanges()) {
+        let entry = RingSyncEntry(outcome: outcome, changes: changes)
+        let history = RingSyncEntry.record(entry, ringID: ringID)
+        if outcome.successful { UserDefaults.standard.set(entry.date, forKey: "lastSync.\(ringID)") }
+        guard selectedID == ringID else { return }
+        syncHistory = history
+        if outcome.successful { lastSync = entry.date }
+        syncMessage = entry.detail
+        if !outcome.successful { log("\(entry.outcome.title): \(entry.detail)") }
     }
     private func finishSync() {
         isSyncing = false
@@ -433,7 +456,10 @@ final class RingBluetooth: NSObject, ObservableObject {
             bluetoothAddress = address
             log("Ring Bluetooth address received.")
         }
-        if isSyncing { receivedReadings += update.saved }
+        if isSyncing {
+            receivedReadings += update.saved
+            syncImports.merge(update.imports)
+        }
         if update.storageFailed {
             syncStorageFailed = true
             syncMessage = "History arrived but could not be saved. Check available iPhone storage."
@@ -487,10 +513,10 @@ extension RingBluetooth: @preconcurrency CBCentralManagerDelegate {
                 discoverRingServices(peripheral)
             } else if pendingScan { scan() }
             else { reconnectIfAllowed() }
-        case .poweredOff: cancelSync(); clearConnection(); isScanning = false; status = "Turn on Bluetooth to connect your ring."
-        case .unauthorized: cancelSync(); clearConnection(); isScanning = false; status = "Allow Bluetooth access in iPhone Settings to connect your ring."
-        case .unsupported: cancelSync(); clearConnection(); isScanning = false; status = "Bluetooth is unavailable. Use a physical iPhone for ring connections."
-        default: cancelSync(); clearConnection(); isScanning = false; status = "Waiting for Bluetooth…"
+        case .poweredOff: cancelSync(connectionLost: true); clearConnection(); isScanning = false; status = "Turn on Bluetooth to connect your ring."
+        case .unauthorized: cancelSync(connectionLost: true); clearConnection(); isScanning = false; status = "Allow Bluetooth access in iPhone Settings to connect your ring."
+        case .unsupported: cancelSync(connectionLost: true); clearConnection(); isScanning = false; status = "Bluetooth is unavailable. Use a physical iPhone for ring connections."
+        default: cancelSync(connectionLost: true); clearConnection(); isScanning = false; status = "Waiting for Bluetooth…"
         }
         log("Bluetooth state: \(central.state.rawValue)")
     }
@@ -519,7 +545,7 @@ extension RingBluetooth: @preconcurrency CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         guard peripheral === self.peripheral else { return }
         connectionTask?.cancel()
-        cancelSync()
+        cancelSync(connectionLost: true)
         clearConnection()
         status = "Could not connect. Close the other ring app and try again."
         log("Connection failed.")
@@ -527,7 +553,7 @@ extension RingBluetooth: @preconcurrency CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         guard peripheral === self.peripheral else { return }
         connectionTask?.cancel()
-        cancelSync()
+        cancelSync(connectionLost: true)
         clearConnection()
         status = "Ring disconnected"
         log("Ring disconnected.")

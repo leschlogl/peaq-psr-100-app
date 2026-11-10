@@ -115,11 +115,100 @@ enum RingDatabaseSchema {
     }
 }
 
+struct RingImportChanges: Sendable {
+    var readings: Set<String> = []
+    var sleepDays: Set<Date> = []
+    var workouts: Set<String> = []
+
+    var isEmpty: Bool { readings.isEmpty && sleepDays.isEmpty && workouts.isEmpty }
+
+    mutating func merge(_ batch: Self) {
+        readings.formUnion(batch.readings)
+        sleepDays.formUnion(batch.sleepDays)
+        workouts.formUnion(batch.workouts)
+    }
+}
+
+struct RingSyncEntry: Codable, Identifiable {
+    enum Outcome: String, Codable {
+        case imported, noChanges, noResponse, storageFailure, connectionFailure, interrupted, credentials
+
+        var successful: Bool { self == .imported || self == .noChanges }
+        var title: String {
+            switch self {
+            case .imported: return "Sync complete"
+            case .noChanges: return "No new readings"
+            case .interrupted: return "Sync interrupted"
+            default: return "Couldn’t sync"
+            }
+        }
+    }
+
+    let id: UUID
+    let date: Date
+    let outcome: Outcome
+    let readings: Int
+    let sleepDays: Int
+    let workouts: Int
+
+    init(outcome: Outcome, changes: RingImportChanges = RingImportChanges(), date: Date = Date()) {
+        id = UUID()
+        self.date = date
+        self.outcome = outcome
+        readings = changes.readings.count
+        sleepDays = changes.sleepDays.count
+        workouts = changes.workouts.count
+    }
+
+    var detail: String {
+        switch outcome {
+        case .imported:
+            var saved: [String] = []
+            if sleepDays > 0 { saved.append(sleepDays == 1 ? "1 sleep day" : "\(sleepDays) sleep days") }
+            if readings > 0 { saved.append(readings == 1 ? "1 reading" : "\(readings) readings") }
+            if workouts > 0 { saved.append(workouts == 1 ? "1 workout" : "\(workouts) workouts") }
+            return "\(saved.formatted(.list(type: .and))) saved"
+        case .noChanges: return "The ring returned readings already saved on your iPhone."
+        case .noResponse: return "No usable history came back from the ring. Try syncing again."
+        case .storageFailure: return "Some readings couldn’t be saved. Check available iPhone storage and try again."
+        case .connectionFailure: return "Check the connection in My Ring and try again."
+        case .interrupted: return "Readings already saved are kept."
+        case .credentials: return "The saved connection credentials couldn’t be used."
+        }
+    }
+
+    static func load(ringID: String, defaults: UserDefaults = .standard) -> [Self] {
+        guard !ringID.isEmpty, let data = defaults.data(forKey: "syncHistory.\(ringID)") else { return [] }
+        return (try? JSONDecoder().decode([Self].self, from: data)) ?? []
+    }
+
+    static func record(_ entry: Self, ringID: String, defaults: UserDefaults = .standard) -> [Self] {
+        guard !ringID.isEmpty else { return [] }
+        let entries = [entry] + load(ringID: ringID, defaults: defaults).prefix(29)
+        if let data = try? JSONEncoder().encode(entries) {
+            defaults.set(data, forKey: "syncHistory.\(ringID)")
+        }
+        return entries
+    }
+}
+
+struct RingDataFreshness: Sendable {
+    let sleepDay: Date?
+    let activity: Date?
+    let heart: Date?
+}
+
 /// Bounded, indexed key lookups and one commit per batch. Unchanged history causes
 /// no writes, avoiding repeated query invalidation on every automatic sync.
 enum RingHistoryPersistence {
     @discardableResult
     static func save(readings: [RingReading], sleep: [RingSleepSegment], workouts: [RingWorkout], ringID: String, context: ModelContext) throws -> Bool {
+        try saveBatch(readings: readings, sleep: sleep, workouts: workouts, ringID: ringID, context: context).changed
+    }
+
+    static func saveBatch(readings: [RingReading], sleep: [RingSleepSegment], workouts: [RingWorkout], ringID: String,
+                          context: ModelContext) throws -> (changed: Bool, imports: RingImportChanges) {
+        var imports = RingImportChanges()
         do {
             for offset in stride(from: 0, to: readings.count, by: 400) {
                 let batch = readings[offset..<min(offset + 400, readings.count)]
@@ -129,11 +218,13 @@ enum RingHistoryPersistence {
                 for reading in batch {
                     let key = reading.storageKey(ringID: ringID)
                     if let record = existing[key] {
-                        if record.value != reading.value { record.value = reading.value }
+                        guard record.value != reading.value else { continue }
+                        record.value = reading.value
                     } else {
                         let record = StoredReading(reading, ringID: ringID)
                         context.insert(record); existing[key] = record
                     }
+                    imports.readings.insert(key)
                 }
             }
             for offset in stride(from: 0, to: sleep.count, by: 400) {
@@ -144,12 +235,14 @@ enum RingHistoryPersistence {
                 for segment in batch {
                     let key = StoredSleepSegment.key(for: segment, ringID: ringID)
                     if let record = existing[key] {
-                        if record.end != segment.end { record.end = segment.end }
-                        if record.stageCode != segment.stage.rawValue { record.stageCode = segment.stage.rawValue }
+                        guard record.end != segment.end || record.stageCode != segment.stage.rawValue else { continue }
+                        record.end = segment.end
+                        record.stageCode = segment.stage.rawValue
                     } else {
                         let record = StoredSleepSegment(segment, ringID: ringID)
                         context.insert(record); existing[key] = record
                     }
+                    imports.sleepDays.insert(RingSnapshotLoader.sleepDay(for: segment))
                 }
             }
             for offset in stride(from: 0, to: workouts.count, by: 400) {
@@ -160,20 +253,23 @@ enum RingHistoryPersistence {
                 for workout in batch {
                     let key = "\(ringID)|workout|\(workout.start.timeIntervalSince1970)|\(workout.typeCode ?? -1)"
                     if let record = existing[key] {
-                        if record.end != workout.end { record.end = workout.end }
-                        if record.steps != workout.steps { record.steps = workout.steps }
-                        if record.calories != workout.calories { record.calories = workout.calories }
-                        if record.distanceMetres != workout.distanceMetres { record.distanceMetres = workout.distanceMetres }
-                        if record.averageHeartRate != workout.averageHeartRate { record.averageHeartRate = workout.averageHeartRate }
+                        guard record.end != workout.end || record.steps != workout.steps || record.calories != workout.calories ||
+                              record.distanceMetres != workout.distanceMetres || record.averageHeartRate != workout.averageHeartRate else { continue }
+                        record.end = workout.end
+                        record.steps = workout.steps
+                        record.calories = workout.calories
+                        record.distanceMetres = workout.distanceMetres
+                        record.averageHeartRate = workout.averageHeartRate
                     } else {
                         let record = StoredWorkout(workout, ringID: ringID)
                         context.insert(record); existing[key] = record
                     }
+                    imports.workouts.insert(key)
                 }
             }
-            guard context.hasChanges else { return false }
+            guard context.hasChanges else { return (false, RingImportChanges()) }
             try context.save()
-            return true
+            return (true, imports)
         } catch { context.rollback(); throw error }
     }
 }
@@ -409,24 +505,51 @@ enum RingSnapshotLoader {
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 
+    private static func latestSleepDay(context: ModelContext, ringID: String, calendar: Calendar) throws -> Date? {
+        let clockMarker = StoredSleepSegment.recordedClockMarker
+        var latestDays: [Date] = []
+        // Absolute legacy dates and encoded clock dates cannot be ordered
+        // together until each is assigned to its recorded day.
+        for recordedClock in [false, true] {
+            var recent = FetchDescriptor<StoredSleepSegment>(predicate: #Predicate {
+                $0.ringID == ringID && $0.stageCode != 0 && $0.key.contains(clockMarker) == recordedClock
+            }, sortBy: [SortDescriptor(\.start, order: .reverse)])
+            recent.fetchLimit = 1
+            if let last = try context.fetch(recent).first {
+                latestDays.append(sleepDay(forStart: last.start, recordedClock: recordedClock, calendar: calendar))
+            }
+        }
+        return latestDays.max()
+    }
+
+    static func freshness(container: ModelContainer, ringID: String, calendar: Calendar = .current) async throws -> RingDataFreshness {
+        let task = Task.detached(priority: .utility) {
+            let context = ModelContext(container)
+            func latest(_ metrics: [RingMetric]) throws -> Date? {
+                var dates: [Date] = []
+                for metric in metrics {
+                    try Task.checkCancellation()
+                    let name = metric.rawValue
+                    var request = FetchDescriptor<StoredReading>(predicate: #Predicate {
+                        $0.ringID == ringID && $0.metricName == name
+                    }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+                    request.fetchLimit = 1
+                    if let date = try context.fetch(request).first?.date { dates.append(date) }
+                }
+                return dates.max()
+            }
+
+            return RingDataFreshness(sleepDay: try latestSleepDay(context: context, ringID: ringID, calendar: calendar),
+                activity: try latest([.steps, .calories, .distance]), heart: try latest([.heartRate, .hrv]))
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
     static func insights(container: ModelContainer, ringID: String, calendar: Calendar = .current) async throws -> RingInsightsSnapshot {
         let task = Task.detached(priority: .utility) {
             let context = ModelContext(container)
-            let clockMarker = StoredSleepSegment.recordedClockMarker
-            var latestDays: [Date] = []
-            // Absolute legacy dates and encoded clock dates cannot be ordered
-            // together until each is assigned to its recorded day.
-            for recordedClock in [false, true] {
-                var recent = FetchDescriptor<StoredSleepSegment>(predicate: #Predicate {
-                    $0.ringID == ringID && $0.stageCode != 0 && $0.key.contains(clockMarker) == recordedClock
-                }, sortBy: [SortDescriptor(\.start, order: .reverse)])
-                recent.fetchLimit = 1
-                if let last = try context.fetch(recent).first {
-                    latestDays.append(sleepDay(forStart: last.start, recordedClock: recordedClock, calendar: calendar))
-                }
-            }
             var sleep: [RingSleepSegment] = []
-            if let day = latestDays.max() {
+            if let day = try latestSleepDay(context: context, ringID: ringID, calendar: calendar) {
                 sleep = try sleepRecordsByDay(context: context, ringID: ringID, from: day, through: day, calendar: calendar)[day] ?? []
             }
             var recentWorkouts = FetchDescriptor<StoredWorkout>(predicate: #Predicate { $0.ringID == ringID }, sortBy: [SortDescriptor(\.start, order: .reverse)])
@@ -492,6 +615,7 @@ struct RingHistoryUpdate: Sendable {
     var notifications = 0
     var decoded = 0
     var saved = 0
+    var imports = RingImportChanges()
     var metricCounts: [String: Int] = [:]
     var rejectedFrames = 0
     var battery: Int?
@@ -574,7 +698,10 @@ final class RingHistoryWorker: @unchecked Sendable {
             // Release registered objects after each transaction rather than
             // keeping a long-lived context as the history grows.
             let context = ModelContext(container); context.autosaveEnabled = false
-            result.changed = try RingHistoryPersistence.save(readings: readings, sleep: sleep, workouts: workouts, ringID: result.ringID, context: context)
+            let batch = try RingHistoryPersistence.saveBatch(readings: readings, sleep: sleep, workouts: workouts,
+                ringID: result.ringID, context: context)
+            result.changed = batch.changed
+            result.imports = batch.imports
             result.saved = readings.count + sleep.count + workouts.count
         } catch { result.storageFailed = true }
         readings.removeAll(keepingCapacity: true)

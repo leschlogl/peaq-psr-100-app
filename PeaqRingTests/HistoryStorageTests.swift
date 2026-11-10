@@ -6,6 +6,67 @@ import SwiftUI
 
 final class HistoryStorageTests: XCTestCase {
     @MainActor
+    func testSyncSummaryCountsOnlyCommittedChangesAndFreshnessIsRingScoped() async throws {
+        let schema = RingDatabaseSchema.make()
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        let context = container.mainContext
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day = calendar.startOfDay(for: Date())
+        let start = day.addingTimeInterval(-3600)
+        let sleep = [
+            RingSleepSegment(start: start, end: day, stage: .light, recordedClock: true),
+            RingSleepSegment(start: day, end: day.addingTimeInterval(3600), stage: .deep, recordedClock: true)
+        ]
+        let heartDate = day.addingTimeInterval(4000)
+        let activityDate = day.addingTimeInterval(5000)
+        let readings = [
+            RingReading(metric: .heartRate, value: 63, date: heartDate),
+            RingReading(metric: .steps, value: 4200, date: activityDate, isObservationTime: true)
+        ]
+        let batch = try RingHistoryPersistence.saveBatch(readings: readings + readings, sleep: sleep + sleep, workouts: [],
+                                                         ringID: "A", context: context)
+        XCTAssertTrue(batch.changed)
+        XCTAssertEqual(batch.imports.readings.count, 2)
+        XCTAssertEqual(batch.imports.sleepDays.count, 1)
+        let repeated = try RingHistoryPersistence.saveBatch(readings: readings, sleep: sleep, workouts: [], ringID: "A", context: context)
+        XCTAssertFalse(repeated.changed)
+        XCTAssertTrue(repeated.imports.isEmpty)
+
+        let correction = RingReading(metric: .heartRate, value: 65, date: heartDate)
+        let corrected = try RingHistoryPersistence.saveBatch(readings: [correction], sleep: [], workouts: [], ringID: "A", context: context)
+        var totals = batch.imports
+        totals.merge(corrected.imports)
+        XCTAssertEqual(totals.readings.count, 2)
+
+        try RingHistoryPersistence.save(readings: [RingReading(metric: .heartRate, value: 68, date: day.addingTimeInterval(6000))],
+                                        sleep: [], workouts: [], ringID: "B", context: context)
+        let freshness = try await RingSnapshotLoader.freshness(container: container, ringID: "A", calendar: calendar)
+        XCTAssertEqual(freshness.sleepDay, day)
+        XCTAssertEqual(freshness.heart, heartDate)
+        XCTAssertEqual(freshness.activity, activityDate)
+        let other = try await RingSnapshotLoader.freshness(container: container, ringID: "B", calendar: calendar)
+        XCTAssertNil(other.sleepDay)
+        XCTAssertNil(other.activity)
+    }
+
+    func testSyncHistoryKeepsLatestThirtyEntriesPerRing() throws {
+        let name = "RingSyncHistoryTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        for index in 0..<35 {
+            _ = RingSyncEntry.record(RingSyncEntry(outcome: index == 34 ? .noResponse : .noChanges,
+                date: Date(timeIntervalSince1970: TimeInterval(index))), ringID: "A", defaults: defaults)
+        }
+        let entries = RingSyncEntry.load(ringID: "A", defaults: defaults)
+        XCTAssertEqual(entries.count, 30)
+        XCTAssertEqual(entries.first?.outcome, .noResponse)
+        XCTAssertEqual(entries.first(where: { $0.outcome.successful })?.date, Date(timeIntervalSince1970: 33))
+        XCTAssertEqual(entries.last?.date, Date(timeIntervalSince1970: 5))
+        XCTAssertTrue(RingSyncEntry.load(ringID: "B", defaults: defaults).isEmpty)
+    }
+
+    @MainActor
     func testRecordedSleepHistoryKeepsItsWakeDatesAcrossTheDateLineAndDST() async throws {
         let schema = RingDatabaseSchema.make()
         let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
