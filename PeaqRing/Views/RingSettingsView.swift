@@ -39,7 +39,9 @@ struct RingSettingsView: View {
                 }
                 Section {
                     LabeledContent("Reading storage", value: "On this iPhone")
-                    LabeledContent("Version", value: "0.1.0")
+                    if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
+                        LabeledContent("Version", value: version)
+                    }
                 } header: {
                     Text("App")
                 } footer: {
