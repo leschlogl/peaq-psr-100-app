@@ -2,6 +2,23 @@
 
 My PEAQ already shows sleep history, activity goals, workouts, PAI, and health trends from the PEAQ PSR 100. The next features will help people see what changed, compare it with their usual patterns, and record what was different that day.
 
+## Implemented in 0.5.0
+
+### Personal baselines
+
+- Compare daily HRV and respiratory rate with a personal range built from the prior 28 days.
+- Show coverage, missing readings, and a seven-day chart. Build the range after at least seven recorded days.
+
+### Sleep corrections and naps
+
+- Use the pencil on a sleep detail screen to mark a session as a nap, exclude it from summaries, or restore it.
+- Keep the original recordings accessible and apply corrections to sleep trends and Weekly Review.
+
+### Low-battery reminders
+
+- Opt in under **My Ring → Battery** and choose a reminder threshold.
+- Check fresh readings and send one reminder per low-battery period, with settings saved per ring.
+
 ## Implemented in 0.4.0
 
 ### 7. Sync history and data freshness
@@ -27,7 +44,7 @@ My PEAQ already shows sleep history, activity goals, workouts, PAI, and health t
 
 ### 3. Personal recovery insights
 
-- Extend the existing HRV baseline approach to resting heart rate and respiratory rate when enough data is available.
+- Extend personal baselines to resting heart rate once resting samples can be identified reliably.
 - Explain deviations from a user's usual range and let users see the underlying readings.
 - Consider a readiness score after the individual indicators are useful and easy to interpret.
 
@@ -52,12 +69,12 @@ My PEAQ already shows sleep history, activity goals, workouts, PAI, and health t
 
 ### 8. Sleep corrections and nap management
 
-- Let users mark a session as a nap, adjust its boundaries, or exclude it from summaries.
-- Keep the original ring readings so users can undo corrections.
+- Extend the existing reversible corrections with start and end time adjustments.
+- Preserve original readings and keep corrections consistent across charts and summaries.
 
 ### 9. Battery planning
 
-- Show the ring's battery trend since its last charge and offer an optional low-battery reminder.
+- Add a battery trend since the last charge alongside the existing low-battery reminders.
 - Estimate whether the ring is likely to last overnight once enough battery history is available.
 
 ## Further ideas
