@@ -17,6 +17,7 @@ struct InsightsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Beyond the daily numbers").font(.subheadline).foregroundStyle(.secondary)
+                    weeklyReviewLink
                     SleepInsightsCard(sleep: allSleep) { selectedSleepDay = $0 }.id(ring.selectedID)
                     paiCard
                     exerciseCard
@@ -45,6 +46,32 @@ struct InsightsView: View {
             .sheet(isPresented: $showingPAIReference) { MetricReferenceView(metric: .pai, value: pai?.value) }
         }
     }
+    private var weeklyReviewLink: some View {
+        let period = WeeklyReviewPeriod()
+        let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: period.end) ?? period.start
+        let dates = (period.start..<lastDay).formatted(.interval.month(.abbreviated).day())
+        return NavigationLink {
+            WeeklyReviewView()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.mint)
+                    .frame(width: 36, height: 36)
+                    .background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Weekly review").font(.headline)
+                    Text("\(dates) · Compare with the prior week").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+            .insightCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("weekly-review-link")
+    }
+
     private var paiCard: some View {
         let bands = TrendBands(metric: .pai)
         return VStack(alignment: .leading, spacing: 14) {
@@ -175,15 +202,21 @@ private func duration(_ seconds: TimeInterval) -> String {
     return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
 }
 
+private enum SleepTrendMode: Hashable {
+    case duration
+    case timing
+}
+
 private struct SleepInsightsCard: View {
     let sleep: [RingSleepSegment]
     let onSelectNight: (Date) -> Void
     @EnvironmentObject private var ring: RingBluetooth
     @State private var range = 1
+    @State private var mode = SleepTrendMode.duration
     @State private var showingInfo = false
     @State private var showingCalendar = false
     @State private var calendarSelection: Date?
-    @State private var totals: [Date: TimeInterval]?
+    @State private var summaries: [Date: RingSleepNightSummary]?
     @State private var loadedFirstDay: Date?
     @State private var trendFailed = false
 
@@ -212,6 +245,13 @@ private struct SleepInsightsCard: View {
                     Text("30 days").tag(30)
                 }
                 .pickerStyle(.segmented)
+                if range > 1 {
+                    Picker("Sleep chart mode", selection: $mode) {
+                        Text("Duration").tag(SleepTrendMode.duration)
+                        Text("Timing").tag(SleepTrendMode.timing)
+                    }
+                    .pickerStyle(.segmented)
+                }
                 let calendar = Calendar.current
                 let firstDay = calendar.date(byAdding: .day, value: 1 - range, to: latestDay)!
                 HStack {
@@ -236,9 +276,9 @@ private struct SleepInsightsCard: View {
                 }
                 if range == 1 {
                     SleepNightTimeline(sleep: sleep)
-                } else if loadedFirstDay == firstDay, let totals {
+                } else if loadedFirstDay == firstDay, let summaries {
                     let days = (0..<range).compactMap { calendar.date(byAdding: .day, value: $0, to: firstDay) }
-                    SleepDurationTrend(days: days, totals: totals, onSelect: onSelectNight)
+                    SleepTrend(days: days, summaries: summaries, mode: mode, onSelect: onSelectNight)
                         .id(firstDay)
                 } else if trendFailed {
                     Text("Couldn’t load sleep history.").font(.subheadline).foregroundStyle(.secondary)
@@ -279,11 +319,11 @@ private struct SleepInsightsCard: View {
             let calendar = Calendar.current
             let first = calendar.date(byAdding: .day, value: 1 - range, to: latestDay)!
             do {
-                let result = try await RingSnapshotLoader.sleepTotals(container: RingStore.shared.get().container,
+                let result = try await RingSnapshotLoader.sleepNightSummaries(container: RingStore.shared.get().container,
                     ringID: ring.selectedID, from: first, through: latestDay, calendar: calendar)
                 guard !Task.isCancelled else { return }
                 loadedFirstDay = first
-                totals = result
+                summaries = result
             } catch {
                 guard !Task.isCancelled else { return }
                 trendFailed = true
@@ -292,35 +332,61 @@ private struct SleepInsightsCard: View {
     }
 }
 
-private struct SleepDurationTrend: View {
+private struct SleepTrend: View {
     let days: [Date]
-    let totals: [Date: TimeInterval]
+    let summaries: [Date: RingSleepNightSummary]
+    let mode: SleepTrendMode
     let onSelect: (Date) -> Void
     @State private var selection: Int?
 
     private var selectedIndex: Int { selection ?? days.count - 1 }
+    private var axisRange: ClosedRange<Double> {
+        if mode == .duration {
+            return 0...max(10, (summaries.values.map(\.asleepDuration).max() ?? 0) / 3600)
+        }
+        let first = (summaries.values.map(\.startOffset).min() ?? 0) / 3600
+        let last = (summaries.values.map(\.endOffset).max() ?? 0) / 3600
+        // Negative values put early clock times at the top of the chart.
+        return -max(9, (last / 3).rounded(.up) * 3)...(-min(-3, (first / 3).rounded(.down) * 3))
+    }
+
+    private func clock(_ offset: TimeInterval) -> String {
+        Date(timeIntervalSinceReferenceDate: offset).formatted(
+            Date.FormatStyle(date: .omitted, time: .shortened, timeZone: TimeZone(secondsFromGMT: 0)!)
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            let average = totals.isEmpty ? nil : totals.values.reduce(0, +) / Double(totals.count)
-            Text(average.map(duration) ?? "—").font(.system(size: 34, weight: .semibold, design: .rounded))
-            Text("Average asleep · \(totals.count) of \(days.count) nights recorded")
-                .font(.caption).foregroundStyle(.secondary)
+            if mode == .timing {
+                Text("Ring clock time").font(.headline)
+                Text("\(summaries.count) of \(days.count) nights recorded")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                let average = summaries.isEmpty ? nil : summaries.values.reduce(0) { $0 + $1.asleepDuration } / Double(summaries.count)
+                Text(average.map(duration) ?? "—").font(.system(size: 34, weight: .semibold, design: .rounded))
+                Text("Average asleep · \(summaries.count) of \(days.count) nights recorded")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             Chart {
                 ForEach(days.indices, id: \.self) { index in
-                    if let seconds = totals[days[index]] {
+                    if let summary = summaries[days[index]] {
+                        let lower = mode == .timing ? -summary.endOffset / 3600 : 0
+                        let upper = mode == .timing ? -summary.startOffset / 3600 : summary.asleepDuration / 3600
                         RectangleMark(xStart: .value("Day start", Double(index) + 0.16),
                                       xEnd: .value("Day end", Double(index) + 0.84),
-                                      yStart: .value("Hours", 0.0), yEnd: .value("Hours", seconds / 3600))
+                                      yStart: .value("Hours", lower), yEnd: .value("Hours", upper))
                             .foregroundStyle(index == selectedIndex ? Color.cyan : Color.indigo)
                             .accessibilityLabel(Text(days[index], format: .dateTime.month().day()))
-                            .accessibilityValue(duration(seconds))
+                            .accessibilityValue(mode == .timing
+                                ? "\(clock(summary.startOffset)) to \(clock(summary.endOffset))"
+                                : duration(summary.asleepDuration))
                     }
                 }
             }
             .chartXScale(domain: 0...Double(days.count))
-            .chartYScale(domain: 0...max(10, (totals.values.max() ?? 0) / 3600))
+            .chartYScale(domain: axisRange)
             .chartXAxis {
                 let ticks = days.count == 7 ? Array(days.indices) : [0, 7, 14, 21, days.count - 1]
                 AxisMarks(values: ticks.map { Double($0) + 0.5 }) { value in
@@ -332,10 +398,12 @@ private struct SleepDurationTrend: View {
                 }
             }
             .chartYAxis {
-                AxisMarks(position: .leading, values: .stride(by: 5.0)) { value in
+                AxisMarks(position: .leading, values: .stride(by: mode == .timing ? 3.0 : 5.0)) { value in
                     AxisGridLine()
                     AxisValueLabel {
-                        if let hours = value.as(Double.self) { Text("\(Int(hours))h") }
+                        if let hours = value.as(Double.self) {
+                            Text(mode == .timing ? clock(-hours * 3600) : "\(Int(hours))h")
+                        }
                     }
                 }
             }
@@ -347,7 +415,7 @@ private struct SleepDurationTrend: View {
                 }
             }
             .sensoryFeedback(.selection, trigger: selectedIndex)
-            .accessibilityIdentifier("sleep-duration-trend")
+            .accessibilityIdentifier(mode == .timing ? "sleep-timing-trend" : "sleep-duration-trend")
             .accessibilityHint("Touch and slide to select a night.")
             .frame(height: 145)
 
@@ -357,14 +425,21 @@ private struct SleepDurationTrend: View {
                     Text(day, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("sleep-trend-selected-date")
-                    if let seconds = totals[day] {
-                        Text("\(duration(seconds)) asleep").font(.subheadline.weight(.medium))
+                    if let summary = summaries[day] {
+                        if mode == .timing {
+                            Text("\(clock(summary.startOffset)) – \(clock(summary.endOffset))")
+                                .font(.subheadline.weight(.medium))
+                                .accessibilityIdentifier("sleep-trend-selected-timing")
+                            Text("\(duration(summary.asleepDuration)) asleep").font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Text("\(duration(summary.asleepDuration)) asleep").font(.subheadline.weight(.medium))
+                        }
                     } else {
                         Text("No sleep recorded").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
-                if totals[day] != nil {
+                if summaries[day] != nil {
                     Button { onSelect(day) } label: {
                         Label("View night", systemImage: "chevron.right")
                             .font(.subheadline.weight(.semibold))
@@ -373,6 +448,9 @@ private struct SleepDurationTrend: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.indigo)
                 }
+            }
+            if mode == .timing, summaries.values.contains(where: \.usesLocalClock) {
+                Text("Older recordings use your current time zone.").font(.caption).foregroundStyle(.secondary)
             }
         }
     }

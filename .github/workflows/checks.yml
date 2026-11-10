@@ -22,7 +22,7 @@ jobs:
           xcodebuild -project PeaqRing.xcodeproj -scheme PeaqRing \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/CI CODE_SIGNING_ALLOWED=NO build
-      - name: iOS history storage tests
+      - name: iOS unit tests
         run: |
           simulator_id=$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
@@ -39,4 +39,4 @@ jobs:
           xcodebuild -project PeaqRing.xcodeproj -scheme PeaqRing \
             -destination "platform=iOS Simulator,id=$simulator_id" \
             -derivedDataPath build/CISimulator CODE_SIGNING_ALLOWED=NO \
-            -parallel-testing-enabled NO -only-testing:PeaqRingTests/HistoryStorageTests test
+            -parallel-testing-enabled NO -only-testing:PeaqRingTests test

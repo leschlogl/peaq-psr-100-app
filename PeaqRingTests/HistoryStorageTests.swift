@@ -42,6 +42,15 @@ final class HistoryStorageTests: XCTestCase {
                 let history = try await RingSnapshotLoader.sleepTotals(container: container, ringID: ring,
                     from: previous, through: next, calendar: calendar)
                 XCTAssertEqual(history, [previous: 1800, wake: 36_000], zone)
+                let summaries = try await RingSnapshotLoader.sleepNightSummaries(container: container, ringID: ring,
+                    from: previous, through: next, calendar: calendar)
+                let timing = try XCTUnwrap(summaries[wake], zone)
+                XCTAssertEqual(timing.startOffset, -5 * 3600, zone)
+                XCTAssertEqual(timing.endOffset, 6 * 3600, zone)
+                XCTAssertEqual(timing.asleepDuration, 10 * 3600, zone)
+                XCTAssertFalse(timing.usesLocalClock, zone)
+                XCTAssertEqual(summaries[previous]?.startOffset, 18 * 3600, zone)
+                XCTAssertNil(summaries[next], zone)
                 let detail = try await RingSnapshotLoader.sleepNight(container: container, ringID: ring, day: wake, calendar: calendar)
                 XCTAssertEqual(detail, night, zone)
                 let latest = try await RingSnapshotLoader.insights(container: container, ringID: ring, calendar: calendar)
@@ -118,6 +127,12 @@ final class HistoryStorageTests: XCTestCase {
             XCTAssertEqual(totals, [localDay: 640 * 60])
             let detail = try await RingSnapshotLoader.sleepNight(container: container, ringID: "A", day: localDay, calendar: calendar)
             XCTAssertEqual(detail, recorded + [nap])
+            let summaries = try await RingSnapshotLoader.sleepNightSummaries(container: container, ringID: "A",
+                from: localDay, through: localDay, calendar: calendar)
+            let timing = try XCTUnwrap(summaries[localDay])
+            XCTAssertEqual(timing.startOffset, -3600)
+            XCTAssertEqual(timing.asleepDuration, 640 * 60)
+            XCTAssertTrue(timing.usesLocalClock)
             let latest = try await RingSnapshotLoader.insights(container: container, ringID: "A", calendar: calendar)
             XCTAssertEqual(latest.sleep, detail)
         }

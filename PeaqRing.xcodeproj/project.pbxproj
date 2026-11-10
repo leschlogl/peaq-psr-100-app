@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */; };
+		1B9F722444FFEA7ADE73785E /* WeeklyReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */; };
 		1CEF8A5C6A61DFADF884CAE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 922012732F56F83B0BCF858A /* Assets.xcassets */; };
 		2A6BC39C47444D672B81BE5F /* PeaqRingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */; };
 		2E2DC09BE8B4F02329B93E74 /* RingExtendedHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7F1902D381ED5945EBDB4E /* RingExtendedHistory.swift */; };
@@ -26,6 +27,8 @@
 		AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3054E0847294C864C2E95815 /* RingDeviceInformation.swift */; };
 		C832CBE122FC3A6FDAA3D630 /* RingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */; };
 		C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */; };
+		D2B0C7D1C13272F475BE8DA4 /* WeeklyReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2554233F8DAF2B5257376DBA /* WeeklyReview.swift */; };
+		E2A95B0D5405D3D8280DC6C9 /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBDD2F0C79C60FFF4CF4B59C /* WeeklyReviewView.swift */; };
 		EF74690757F298AADF7FF87A /* ReferencePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */; };
 		F0A7C7B2481BD84301AF8C6E /* RingHistoryAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4F9A32414DC4A49564AA97 /* RingHistoryAccess.swift */; };
 		F35E06CBF516FCA8FA94A0BC /* PeaqRingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B4794F3CBE3E78D08F44E4B /* PeaqRingApp.swift */; };
@@ -54,6 +57,7 @@
 		0EFD2654A601A5175F15CC6D /* PeaqRing.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PeaqRing.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingStore.swift; sourceTree = "<group>"; };
 		12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferencePreferencesTests.swift; sourceTree = "<group>"; };
+		2554233F8DAF2B5257376DBA /* WeeklyReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReview.swift; sourceTree = "<group>"; };
 		3054E0847294C864C2E95815 /* RingDeviceInformation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDeviceInformation.swift; sourceTree = "<group>"; };
 		3068649493D2C16D1E9A4356 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		44BD27D60EC7C4A8CF6750E1 /* RingMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingMetric.swift; sourceTree = "<group>"; };
@@ -72,7 +76,9 @@
 		99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingSettingsView.swift; sourceTree = "<group>"; };
 		AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeaqRingUITests.swift; sourceTree = "<group>"; };
 		BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		BBDD2F0C79C60FFF4CF4B59C /* WeeklyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewView.swift; sourceTree = "<group>"; };
 		DC556AA1FCC8518659DD6E5E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewTests.swift; sourceTree = "<group>"; };
 		ED320FA17F276BBB9C10B54A /* RingDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDiscovery.swift; sourceTree = "<group>"; };
 		F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferencePreferences.swift; sourceTree = "<group>"; };
 		F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -96,6 +102,7 @@
 			children = (
 				F02FEA27BA46E415F441CA09 /* ReferencePreferences.swift */,
 				105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */,
+				2554233F8DAF2B5257376DBA /* WeeklyReview.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -142,6 +149,7 @@
 				056B973CD2B2E9664358B596 /* MetricReferenceView.swift */,
 				97DE058663B8C96E3FF0DE92 /* RingDeviceView.swift */,
 				99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */,
+				BBDD2F0C79C60FFF4CF4B59C /* WeeklyReviewView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -151,6 +159,7 @@
 			children = (
 				62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */,
 				12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */,
+				E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */,
 			);
 			path = PeaqRingTests;
 			sourceTree = "<group>";
@@ -334,6 +343,8 @@
 				82088C37BC41A52DDC8FF828 /* RingSettingsView.swift in Sources */,
 				C832CBE122FC3A6FDAA3D630 /* RingStore.swift in Sources */,
 				3642EE7938F241E3B922728F /* RingWire.swift in Sources */,
+				D2B0C7D1C13272F475BE8DA4 /* WeeklyReview.swift in Sources */,
+				E2A95B0D5405D3D8280DC6C9 /* WeeklyReviewView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,6 +354,7 @@
 			files = (
 				044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */,
 				C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */,
+				1B9F722444FFEA7ADE73785E /* WeeklyReviewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -451,14 +463,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PeaqRing/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.ios;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -536,14 +548,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PeaqRing/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.peaqring.ios;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
