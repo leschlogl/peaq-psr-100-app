@@ -12,8 +12,31 @@ jobs:
       - uses: actions/checkout@v4
       - name: Protocol tests
         run: swift test
+      - name: History decoding in different time zones
+        run: |
+          for zone in Pacific/Kiritimati America/Adak Asia/Kathmandu; do
+            TZ="$zone" swift test --skip-build --filter RingExtendedHistoryTests
+          done
       - name: Unsigned iOS build
         run: |
           xcodebuild -project PeaqRing.xcodeproj -scheme PeaqRing \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/CI CODE_SIGNING_ALLOWED=NO build
+      - name: iOS history storage tests
+        run: |
+          simulator_id=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          for runtime, devices in runtimes.items():
+              if ".SimRuntime.iOS-" not in runtime:
+                  continue
+              for device in devices:
+                  if device["isAvailable"] and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      sys.exit(0)
+          sys.exit("No available iPhone simulator")
+          ')
+          xcodebuild -project PeaqRing.xcodeproj -scheme PeaqRing \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -derivedDataPath build/CISimulator CODE_SIGNING_ALLOWED=NO \
+            -parallel-testing-enabled NO -only-testing:PeaqRingTests/HistoryStorageTests test
