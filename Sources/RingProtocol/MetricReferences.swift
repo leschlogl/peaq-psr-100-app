@@ -127,33 +127,62 @@ public enum MetricReferences {
     }
 }
 
-/// Descriptive, app-defined baseline, not a clinical reference interval.
-/// Daily medians give each recorded day equal weight. Today's samples cannot
-/// influence the comparison with today's latest reading.
+/// Descriptive daily medians give each recorded day equal weight.
+public struct DailyReadingBaseline: Sendable {
+    public static let windowDays = 28
+    public static let minimumDays = 7
+
+    public let dayCount: Int
+    public let median: Double?
+    public let range: ClosedRange<Double>?
+
+    public init(dailyMedians: [Date: Double], before date: Date, calendar: Calendar = .current) {
+        let end = calendar.startOfDay(for: date)
+        let start = calendar.date(byAdding: .day, value: -Self.windowDays, to: end)!
+        let medians = dailyMedians.filter { $0.key >= start && $0.key < end }.values.sorted()
+        dayCount = medians.count
+        if medians.count >= Self.minimumDays {
+            median = Self.quantile(medians, 0.5)
+            range = Self.quantile(medians, 0.25)...Self.quantile(medians, 0.75)
+        } else {
+            median = nil
+            range = nil
+        }
+    }
+
+    public static func dailyMedians(for metric: RingMetric, readings: [RingReading], calendar: Calendar = .current) -> [Date: Double] {
+        // Repeated imports of the same timestamp must not change its weight.
+        var unique: [Date: Double] = [:]
+        for reading in readings where reading.metric == metric && !reading.isObservationTime && metric.accepts(reading.value) {
+            unique[reading.date] = reading.value
+        }
+        let days = Dictionary(grouping: unique.keys, by: { calendar.startOfDay(for: $0) })
+        return days.mapValues { dates in Self.quantile(dates.map { unique[$0]! }.sorted(), 0.5) }
+    }
+
+    private static func quantile(_ sorted: [Double], _ fraction: Double) -> Double {
+        let position = Double(sorted.count - 1) * fraction
+        let lower = Int(position)
+        let upper = min(lower + 1, sorted.count - 1)
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - Double(lower))
+    }
+}
+
+/// Descriptive, app-defined HRV baseline. Today's samples cannot influence the
+/// comparison with today's latest reading.
 public struct HRVBaseline: Sendable {
     public let dayCount: Int
     public let median: Double?
     public let range: ClosedRange<Double>?
     public init(readings: [RingReading], before date: Date, calendar: Calendar = .current) {
         let end = calendar.startOfDay(for: date)
-        let start = calendar.date(byAdding: .day, value: -28, to: end)!
-        let valid = readings.filter { $0.metric == .hrv && !$0.isObservationTime && RingMetric.hrv.accepts($0.value) && $0.date >= start && $0.date < end }
-        // Repeated imports of the same timestamp must not change its weight.
-        var unique: [Date: Double] = [:]
-        for reading in valid { unique[reading.date] = reading.value }
-        let days = Dictionary(grouping: unique.keys, by: { calendar.startOfDay(for: $0) })
-        let medians = days.values.map { dates in Self.quantile(dates.map { unique[$0]! }.sorted(), 0.5) }.sorted()
-        dayCount = medians.count
-        if medians.count >= 7 {
-            median = Self.quantile(medians, 0.5)
-            range = Self.quantile(medians, 0.25)...Self.quantile(medians, 0.75)
-        } else { median = nil; range = nil }
-    }
-    private static func quantile(_ sorted: [Double], _ fraction: Double) -> Double {
-        let position = Double(sorted.count - 1) * fraction
-        let lower = Int(position)
-        let upper = min(lower + 1, sorted.count - 1)
-        return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - Double(lower))
+        let start = calendar.date(byAdding: .day, value: -DailyReadingBaseline.windowDays, to: end)!
+        let eligible = readings.filter { $0.date >= start && $0.date < end }
+        let medians = DailyReadingBaseline.dailyMedians(for: .hrv, readings: eligible, calendar: calendar)
+        let baseline = DailyReadingBaseline(dailyMedians: medians, before: end, calendar: calendar)
+        dayCount = baseline.dayCount
+        median = baseline.median
+        range = baseline.range
     }
     public func category(value: Double) -> MetricCategory {
         guard RingMetric.hrv.accepts(value) else { return MetricCategory("Outside reference", "No personal comparison is available for this reading.", .unavailable) }

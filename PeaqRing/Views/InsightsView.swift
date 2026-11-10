@@ -20,6 +20,7 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Beyond the daily numbers").font(.subheadline).foregroundStyle(.secondary)
                     weeklyReviewLink
+                    personalBaselinesLink
                     SleepInsightsCard(sleep: allSleep, includedSleep: includedSleep) { selectedSleepDay = $0 }.id(ring.selectedID)
                     paiCard
                     exerciseCard
@@ -52,17 +53,30 @@ struct InsightsView: View {
         let period = WeeklyReviewPeriod()
         let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: period.end) ?? period.start
         let dates = (period.start..<lastDay).formatted(.interval.month(.abbreviated).day())
-        return NavigationLink {
+        return insightsLink("Weekly review", subtitle: "\(dates) · Compare with the prior week",
+                            icon: "calendar", identifier: "weekly-review-link") {
             WeeklyReviewView()
-        } label: {
+        }
+    }
+
+    private var personalBaselinesLink: some View {
+        insightsLink("Personal baselines", subtitle: "Compare readings with your usual range",
+                     icon: "waveform.path", identifier: "personal-baselines-link") {
+            PersonalBaselinesView()
+        }
+    }
+
+    private func insightsLink<Destination: View>(_ title: String, subtitle: String, icon: String,
+                                                  identifier: String, @ViewBuilder destination: () -> Destination) -> some View {
+        NavigationLink(destination: destination) {
             HStack(spacing: 12) {
-                Image(systemName: "calendar")
+                Image(systemName: icon)
                     .foregroundStyle(.mint)
                     .frame(width: 36, height: 36)
                     .background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Weekly review").font(.headline)
-                    Text("\(dates) · Compare with the prior week").font(.caption).foregroundStyle(.secondary)
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -71,7 +85,7 @@ struct InsightsView: View {
             .insightCard()
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("weekly-review-link")
+        .accessibilityIdentifier(identifier)
     }
 
     private var paiCard: some View {
