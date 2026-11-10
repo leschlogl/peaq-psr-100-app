@@ -346,6 +346,7 @@ struct HistoryAvailabilityCalendar: UIViewRepresentable {
     @Binding var visibleMonth: Date
     let availableDays: Set<Date>
     var calendar: Calendar = .current
+    var onSelectRecordedDay: ((Date) -> Void)? = nil
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
     func makeUIView(context: Context) -> UICalendarView {
         let view = UICalendarView()
@@ -372,7 +373,7 @@ struct HistoryAvailabilityCalendar: UIViewRepresentable {
         defer { coordinator.updating = false }
         let changed = coordinator.decoratedDays.symmetricDifference(availableDays)
         coordinator.decoratedDays = availableDays
-        if let selection = view.selectionBehavior as? UICalendarSelectionSingleDate {
+        if onSelectRecordedDay == nil, let selection = view.selectionBehavior as? UICalendarSelectionSingleDate {
             let selected = selection.selectedDate.flatMap { calendar.date(from: $0) }
             if selected == nil || !calendar.isDate(selected!, inSameDayAs: day) {
                 selection.setSelected(calendar.dateComponents([.era, .year, .month, .day], from: day), animated: false)
@@ -400,11 +401,17 @@ struct HistoryAvailabilityCalendar: UIViewRepresentable {
         }
         func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
             guard !updating, let dateComponents, let date = parent.calendar.date(from: dateComponents) else { return }
-            parent.day = date
+            if let onSelect = parent.onSelectRecordedDay {
+                onSelect(parent.calendar.startOfDay(for: date))
+            } else {
+                parent.day = date
+            }
         }
         func dateSelection(_ selection: UICalendarSelectionSingleDate, canSelectDate dateComponents: DateComponents?) -> Bool {
             guard let dateComponents, let date = parent.calendar.date(from: dateComponents) else { return false }
-            return parent.calendar.startOfDay(for: date) <= parent.calendar.startOfDay(for: Date())
+            let day = parent.calendar.startOfDay(for: date)
+            if parent.onSelectRecordedDay != nil { return decoratedDays.contains(day) }
+            return day <= parent.calendar.startOfDay(for: Date())
         }
     }
 }

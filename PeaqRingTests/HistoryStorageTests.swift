@@ -6,6 +6,35 @@ import SwiftUI
 
 final class HistoryStorageTests: XCTestCase {
     @MainActor
+    func testSleepHistoryUsesWakeDateAndExcludesAwakeTimeAndOtherRings() async throws {
+        let schema = RingDatabaseSchema.make()
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Lisbon")!
+        func date(_ day: Int, _ hour: Int = 0) -> Date {
+            calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+        }
+        let overnight = RingSleepSegment(start: date(24, 23), end: date(25, 6), stage: .light)
+        let awake = RingSleepSegment(start: date(25, 6), end: date(25, 7), stage: .awake)
+        let awakeOnly = RingSleepSegment(start: date(26, 4), end: date(26, 5), stage: .awake)
+        let cutoff = RingSleepSegment(start: date(27, 18), end: date(27, 19), stage: .deep)
+        try RingHistoryPersistence.save(readings: [], sleep: [overnight, awake, awakeOnly, cutoff], workouts: [],
+                                        ringID: "A", context: container.mainContext)
+        try RingHistoryPersistence.save(readings: [], sleep: [cutoff], workouts: [], ringID: "B", context: container.mainContext)
+
+        let totals = try await RingSnapshotLoader.sleepTotals(container: container, ringID: "A",
+                                                              from: date(24), through: date(26), calendar: calendar)
+        XCTAssertEqual(totals, [date(25): 8 * 3600])
+        let detail = try await RingSnapshotLoader.sleepNight(container: container, ringID: "A", day: date(25), calendar: calendar)
+        XCTAssertEqual(detail, [overnight, awake])
+        let otherRing = try await RingSnapshotLoader.sleepTotals(container: container, ringID: "B",
+                                                                  from: date(24), through: date(27), calendar: calendar)
+        XCTAssertEqual(otherRing, [date(27): 3600])
+        let latest = try await RingSnapshotLoader.insights(container: container, ringID: "A", calendar: calendar)
+        XCTAssertEqual(latest.sleep, [cutoff])
+    }
+
+    @MainActor
     func testCalendarAvailabilityIsScopedToMonthRingAndVisibleDashboardMetrics() async throws {
         let schema = RingDatabaseSchema.make()
         let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))

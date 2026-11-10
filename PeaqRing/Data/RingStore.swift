@@ -207,18 +207,60 @@ enum RingSnapshotLoader {
         }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
+    // The ring groups sleep from 19:00 to 19:00, labeled by the second date.
+    static func sleepDay(forStart start: Date, calendar: Calendar = .current) -> Date {
+        let day = calendar.startOfDay(for: start)
+        return calendar.component(.hour, from: start) < 19 ? day : calendar.date(byAdding: .day, value: 1, to: day)!
+    }
+
+    private static func sleepRecords(context: ModelContext, ringID: String, from firstDay: Date, through lastDay: Date,
+                                     calendar: Calendar, asleepOnly: Bool = false) throws -> [RingSleepSegment] {
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: firstDay)!
+        let start = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: previousDay)!
+        let end = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: lastDay)!
+        let request = FetchDescriptor<StoredSleepSegment>(predicate: #Predicate {
+            $0.ringID == ringID && $0.start >= start && $0.start < end && $0.end <= end && (!asleepOnly || $0.stageCode != 0)
+        }, sortBy: [SortDescriptor(\.start)])
+        return try context.fetch(request).compactMap { record in
+            let day = sleepDay(forStart: record.start, calendar: calendar)
+            let cutoff = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: day)!
+            guard record.end > record.start, record.end <= cutoff, let stage = RingSleepStage(rawValue: record.stageCode) else { return nil }
+            return RingSleepSegment(start: record.start, end: record.end, stage: stage)
+        }
+    }
+
+    static func sleepNight(container: ModelContainer, ringID: String, day: Date, calendar: Calendar = .current) async throws -> [RingSleepSegment] {
+        let task = Task.detached(priority: .utility) {
+            try sleepRecords(context: ModelContext(container), ringID: ringID, from: day, through: day, calendar: calendar)
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
+    static func sleepTotals(container: ModelContainer, ringID: String, from firstDay: Date, through lastDay: Date,
+                            calendar: Calendar = .current) async throws -> [Date: TimeInterval] {
+        let task = Task.detached(priority: .utility) {
+            let records = try sleepRecords(context: ModelContext(container), ringID: ringID, from: firstDay, through: lastDay,
+                                           calendar: calendar, asleepOnly: true)
+            var totals: [Date: TimeInterval] = [:]
+            for record in records {
+                try Task.checkCancellation()
+                let day = sleepDay(forStart: record.start, calendar: calendar)
+                totals[day, default: 0] += record.duration
+            }
+            return totals
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
     static func insights(container: ModelContainer, ringID: String, calendar: Calendar = .current) async throws -> RingInsightsSnapshot {
         let task = Task.detached(priority: .utility) {
             let context = ModelContext(container)
             var recentSleep = FetchDescriptor<StoredSleepSegment>(predicate: #Predicate { $0.ringID == ringID && $0.stageCode != 0 }, sortBy: [SortDescriptor(\.start, order: .reverse)])
             recentSleep.fetchLimit = 1
-            var sleepRecords: [StoredSleepSegment] = []
+            var sleep: [RingSleepSegment] = []
             if let last = try context.fetch(recentSleep).first {
-                var day = calendar.startOfDay(for: last.end)
-                if calendar.component(.hour, from: last.end) >= 19 { day = calendar.date(byAdding: .day, value: 1, to: day)! }
-                let end = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: day)!
-                let start = calendar.date(byAdding: .day, value: -1, to: end)!
-                sleepRecords = try context.fetch(FetchDescriptor<StoredSleepSegment>(predicate: #Predicate { $0.ringID == ringID && $0.start >= start && $0.start <= end && $0.end <= end }, sortBy: [SortDescriptor(\.start)]))
+                let day = sleepDay(forStart: last.start, calendar: calendar)
+                sleep = try sleepRecords(context: context, ringID: ringID, from: day, through: day, calendar: calendar)
             }
             var recentWorkouts = FetchDescriptor<StoredWorkout>(predicate: #Predicate { $0.ringID == ringID }, sortBy: [SortDescriptor(\.start, order: .reverse)])
             recentWorkouts.fetchLimit = 20
@@ -227,10 +269,7 @@ enum RingSnapshotLoader {
             recentPAI.fetchLimit = 14
             let pai = try context.fetch(recentPAI)
             return RingInsightsSnapshot(
-                sleep: sleepRecords.compactMap { record in
-                    guard let stage = RingSleepStage(rawValue: record.stageCode) else { return nil }
-                    return RingSleepSegment(start: record.start, end: record.end, stage: stage)
-                },
+                sleep: sleep,
                 workouts: workouts.map { RingWorkout(start: $0.start, end: $0.end, typeCode: $0.typeCode, steps: $0.steps, calories: $0.calories, distanceMetres: $0.distanceMetres, averageHeartRate: $0.averageHeartRate) },
                 pai: pai.map { RingReading(metric: .pai, value: $0.value, date: $0.date) })
         }
