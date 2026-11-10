@@ -6,6 +6,127 @@ import SwiftUI
 
 final class HistoryStorageTests: XCTestCase {
     @MainActor
+    func testRecordedSleepHistoryKeepsItsWakeDatesAcrossTheDateLineAndDST() async throws {
+        let schema = RingDatabaseSchema.make()
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        let now = ISO8601DateFormatter().date(from: "2027-01-02T12:00:00Z")!
+        // Each packet begins exactly at 19:00. The daytime nap at 18:00
+        // still belongs to the earlier day, even near a month or year change.
+        let fixtures: [(wireDate: [UInt8], wake: DateComponents)] = [
+            ([26, 3, 28], DateComponents(year: 2026, month: 3, day: 29)),
+            ([26, 10, 24], DateComponents(year: 2026, month: 10, day: 25)),
+            ([26, 12, 31], DateComponents(year: 2027, month: 1, day: 1))
+        ]
+        let zones = ["Pacific/Kiritimati", "America/Adak", "Asia/Kathmandu", "Australia/Adelaide",
+                     "Pacific/Chatham", "Europe/Berlin", "Europe/Lisbon", "America/St_Johns"]
+        let context = container.mainContext
+        for (index, fixture) in fixtures.enumerated() {
+            let ring = "Travel-\(index)"
+            let nightPacket = RingHistoryBlock(command: 10, subcommand: 162,
+                payload: Data(fixture.wireDate + [1, 19, 0, 0, 21, 0, 2, 22, 0, 1, 2, 30, 0, 6, 0]), receivedAt: now)
+            let night = RingExtendedHistory.recordedSleep(nightPacket, now: now)
+            XCTAssertEqual(night.count, 4)
+            let napStart = night[0].start.addingTimeInterval(-3600)
+            let nap = RingSleepSegment(start: napStart, end: napStart.addingTimeInterval(1800), stage: .light, recordedClock: true)
+            XCTAssertTrue(try RingHistoryPersistence.save(readings: [], sleep: [nap] + night, workouts: [], ringID: ring, context: context))
+
+            for (trip, zone) in zones.enumerated() {
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.timeZone = try XCTUnwrap(TimeZone(identifier: zone))
+                let wake = try XCTUnwrap(calendar.date(from: fixture.wake))
+                let previous = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: wake))
+                let next = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: wake))
+                let reimported = RingExtendedHistory.recordedSleep(nightPacket, now: now.addingTimeInterval(Double(trip) * 3600))
+                XCTAssertFalse(try RingHistoryPersistence.save(readings: [], sleep: reimported, workouts: [], ringID: ring, context: context), zone)
+
+                let history = try await RingSnapshotLoader.sleepTotals(container: container, ringID: ring,
+                    from: previous, through: next, calendar: calendar)
+                XCTAssertEqual(history, [previous: 1800, wake: 36_000], zone)
+                let detail = try await RingSnapshotLoader.sleepNight(container: container, ringID: ring, day: wake, calendar: calendar)
+                XCTAssertEqual(detail, night, zone)
+                let latest = try await RingSnapshotLoader.insights(container: container, ringID: ring, calendar: calendar)
+                XCTAssertEqual(latest.sleep, night, zone)
+            }
+        }
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<StoredSleepSegment>()), 15)
+    }
+
+    @MainActor
+    func testLegacyRepairCountsFractionalShiftOnceButKeepsDistinctAndAmbiguousSessions() async throws {
+        let schema = RingDatabaseSchema.make()
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let day = calendar.date(from: DateComponents(year: 2026, month: 11, day: 8))!
+        let first = day.addingTimeInterval(3600)
+        let original = [
+            RingSleepSegment(start: first, end: first.addingTimeInterval(1200), stage: .light),
+            RingSleepSegment(start: first.addingTimeInterval(1200), end: first.addingTimeInterval(4800), stage: .deep),
+            RingSleepSegment(start: first.addingTimeInterval(4800), end: first.addingTimeInterval(7200), stage: .light)
+        ]
+        func shifted(by offset: TimeInterval) -> [RingSleepSegment] {
+            original.map { RingSleepSegment(start: $0.start.addingTimeInterval(offset), end: $0.end.addingTimeInterval(offset), stage: $0.stage) }
+        }
+        let laterNap = shifted(by: 10 * 3600)
+        let shiftedCopy = shifted(by: 45 * 60)
+        let last = shiftedCopy[2]
+        let different = Array(shiftedCopy.prefix(2)) + [RingSleepSegment(start: last.start, end: last.end, stage: .deep)]
+        let fixtures = [
+            (stored: original + shiftedCopy + laterNap, expected: original + laterNap),
+            (stored: original + different, expected: (original + different).sorted { $0.start < $1.start })
+        ]
+        for (index, fixture) in fixtures.enumerated() {
+            let ring = "Legacy-\(index)"
+            try RingHistoryPersistence.save(readings: [], sleep: fixture.stored, workouts: [], ringID: ring, context: container.mainContext)
+            let loaded = try await RingSnapshotLoader.sleepNight(container: container, ringID: ring, day: day, calendar: calendar)
+            XCTAssertEqual(loaded, fixture.expected)
+        }
+        XCTAssertEqual(try container.mainContext.fetchCount(FetchDescriptor<StoredSleepSegment>()), 15)
+    }
+
+    @MainActor
+    func testTravelSleepRepairsShiftedCopiesAndPrefersRecordedClock() async throws {
+        let schema = RingDatabaseSchema.make()
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+        var lisbon = Calendar(identifier: .gregorian)
+        lisbon.timeZone = TimeZone(identifier: "Europe/Lisbon")!
+        var berlin = lisbon
+        berlin.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        let day = DateComponents(year: 2026, month: 11, day: 8)
+        let now = lisbon.date(from: day)!.addingTimeInterval(18 * 3600)
+        let packet = RingHistoryBlock(command: 10, subcommand: 162,
+            payload: Data([26,11,7, 1,23,0, 2,23,43, 1,0,58, 0,8,40]), receivedAt: now)
+        let legacyBerlin = RingExtendedHistory.sleep(packet, now: now, timeZone: berlin.timeZone)
+        let legacyLisbon = RingExtendedHistory.sleep(packet, now: now, timeZone: lisbon.timeZone)
+        let nap = RingSleepSegment(start: now.addingTimeInterval(-4 * 3600), end: now.addingTimeInterval(-3 * 3600), stage: .light)
+        let context = container.mainContext
+        try RingHistoryPersistence.save(readings: [], sleep: legacyBerlin + legacyLisbon + [nap], workouts: [], ringID: "A", context: context)
+        try RingHistoryPersistence.save(readings: [], sleep: legacyLisbon, workouts: [], ringID: "B", context: context)
+
+        let lisbonDay = lisbon.date(from: day)!
+        let repaired = try await RingSnapshotLoader.sleepNight(container: container, ringID: "A", day: lisbonDay, calendar: lisbon)
+        XCTAssertEqual(repaired, legacyBerlin + [nap])
+
+        let recorded = RingExtendedHistory.recordedSleep(packet, now: now)
+        XCTAssertTrue(try RingHistoryPersistence.save(readings: [], sleep: recorded, workouts: [], ringID: "A", context: context))
+        XCTAssertFalse(try RingHistoryPersistence.save(readings: [], sleep: RingExtendedHistory.recordedSleep(packet, now: now.addingTimeInterval(3600)),
+                                                       workouts: [], ringID: "A", context: context))
+        for calendar in [lisbon, berlin] {
+            let localDay = calendar.date(from: day)!
+            let totals = try await RingSnapshotLoader.sleepTotals(container: container, ringID: "A",
+                                                                  from: localDay, through: localDay, calendar: calendar)
+            XCTAssertEqual(totals, [localDay: 640 * 60])
+            let detail = try await RingSnapshotLoader.sleepNight(container: container, ringID: "A", day: localDay, calendar: calendar)
+            XCTAssertEqual(detail, recorded + [nap])
+            let latest = try await RingSnapshotLoader.insights(container: container, ringID: "A", calendar: calendar)
+            XCTAssertEqual(latest.sleep, detail)
+        }
+        let otherRing = try await RingSnapshotLoader.sleepNight(container: container, ringID: "B", day: lisbonDay, calendar: lisbon)
+        XCTAssertEqual(otherRing, legacyLisbon)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<StoredSleepSegment>()), 13)
+    }
+
+    @MainActor
     func testSleepHistoryUsesWakeDateAndExcludesAwakeTimeAndOtherRings() async throws {
         let schema = RingDatabaseSchema.make()
         let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))

@@ -8,8 +8,12 @@ public struct RingSleepSegment: Equatable, Codable, Sendable {
     public let start: Date
     public let end: Date
     public let stage: RingSleepStage
+    // Recorded clock values use UTC as a neutral encoding, not as the ring's time zone.
+    public let recordedClock: Bool?
     public var duration: TimeInterval { end.timeIntervalSince(start) }
-    public init(start: Date, end: Date, stage: RingSleepStage) { self.start = start; self.end = end; self.stage = stage }
+    public init(start: Date, end: Date, stage: RingSleepStage, recordedClock: Bool? = nil) {
+        self.start = start; self.end = end; self.stage = stage; self.recordedClock = recordedClock
+    }
 }
 public struct RingWorkout: Equatable, Codable, Sendable {
     public let start: Date
@@ -41,6 +45,16 @@ public enum RingExtendedHistory {
               back.minute == c.minute, back.second == c.second else { return nil }
         return date
     }
+    /// Stable clock representation for importing sleep history. The packet has
+    /// no time zone; a current phone offset cannot establish the recording's offset.
+    public static func recordedSleep(_ block: RingHistoryBlock, now: Date = Date()) -> [RingSleepSegment] {
+        let utc = TimeZone(secondsFromGMT: 0)!
+        // The latest possible local clock is UTC+14. Validate against that
+        // clock so traveling west cannot reject a night recorded before travel.
+        return sleep(block, now: now.addingTimeInterval(14 * 3600), timeZone: utc)
+            .map { RingSleepSegment(start: $0.start, end: $0.end, stage: $0.stage, recordedClock: true) }
+    }
+
     /// 0A/A2: calendar date, then stage/hour/minute transition triples.
     /// Hours before 19:00 belong to the following calendar day.
     /// The final transition closes the previous stage; no end is invented for it.

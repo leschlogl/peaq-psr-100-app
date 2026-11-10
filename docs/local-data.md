@@ -18,7 +18,8 @@ The app discards raw Bluetooth packets after processing. Older development build
 The app saves decoded records in batches. Each record belongs to the ring that supplied it. Syncing an overlapping period updates matching records when values have changed and adds records for new measurements.
 
 - A metric reading is identified by its ring, metric, timestamp, and timestamp type. When the ring sends an activity total without a timestamp, the app records when it arrived and groups repeated totals within the same minute.
-- A sleep segment is identified by its ring and start time. An exercise session also uses its activity type when available.
+- A sleep segment is identified by its ring and the date and start time reported by the ring. Sleep history keeps those clock times across time-zone changes. Older imports used the phone’s time zone at sync. When matching overlapping copies can be identified, they count once in sleep views without removing the saved rows.
+- An exercise session is identified by its ring, start time, and activity type when available.
 - Hourly and daily chart averages are calculated from the saved readings when you view a chart. The database stores the underlying readings.
 
 If a batch fails to save, the app rolls back that batch. If the database fails to open, the app offers **Try again** and keeps the existing store files.

@@ -188,7 +188,7 @@ private struct SleepInsightsCard: View {
     @State private var trendFailed = false
 
     private var latestDay: Date? {
-        sleep.last { $0.stage != .awake }.map { RingSnapshotLoader.sleepDay(forStart: $0.start) }
+        sleep.last { $0.stage != .awake }.map { RingSnapshotLoader.sleepDay(for: $0) }
     }
 
     var body: some View {
@@ -485,6 +485,16 @@ private struct SleepNightTimeline: View {
     var expanded = false
     @State private var selectedSleepTime: Date?
 
+    private var usesRecordedClock: Bool { sleep.contains { $0.recordedClock == true } }
+    private var timeFormat: Date.FormatStyle {
+        .init(date: .omitted, time: .shortened,
+              timeZone: usesRecordedClock ? TimeZone(secondsFromGMT: 0)! : .current)
+    }
+
+    private func plotDate(_ date: Date, segment: RingSleepSegment) -> Date {
+        usesRecordedClock && segment.recordedClock != true ? RingSnapshotLoader.recordedClockDate(date) : date
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             let asleep = sleep.filter { $0.stage != .awake }.reduce(0.0) { $0 + $1.duration }
@@ -502,11 +512,12 @@ private struct SleepNightTimeline: View {
                 Text("Sleep stages").font(.headline).accessibilityAddTraits(.isHeader)
             }
             let segment = selectedSleepTime.flatMap { time in
-                sleep.last { $0.start <= time && time < $0.end }
+                sleep.last { plotDate($0.start, segment: $0) <= time && time < plotDate($0.end, segment: $0) }
             }
             Chart {
                 ForEach(sleep, id: \.start) { record in
-                    RectangleMark(xStart: .value("Start", record.start), xEnd: .value("End", record.end), y: .value("Stage", axisStage(record.stage.rawValue)), height: 18)
+                    RectangleMark(xStart: .value("Start", plotDate(record.start, segment: record)),
+                                  xEnd: .value("End", plotDate(record.end, segment: record)), y: .value("Stage", axisStage(record.stage.rawValue)), height: 18)
                         .foregroundStyle(stageColor(record.stage.rawValue))
                 }
                 if let time = selectedSleepTime {
@@ -520,7 +531,7 @@ private struct SleepNightTimeline: View {
                     if let segment {
                         Text(segment.stage.title).font(.subheadline.bold())
                             .foregroundStyle(stageColor(segment.stage.rawValue))
-                        Text("\(segment.start.formatted(date: .omitted, time: .shortened)) – \(segment.end.formatted(date: .omitted, time: .shortened))")
+                        Text("\(plotDate(segment.start, segment: segment).formatted(timeFormat)) – \(plotDate(segment.end, segment: segment).formatted(timeFormat))")
                             .font(.caption).foregroundStyle(.secondary)
                         Text(duration(segment.end.timeIntervalSince(segment.start))).font(.caption2)
                     } else {
@@ -532,6 +543,14 @@ private struct SleepNightTimeline: View {
             .sensoryFeedback(.selection, trigger: segment?.start) { _, start in start != nil }
             .onChange(of: sleep.first?.start) { _, _ in selectedSleepTime = nil }
             .accessibilityHint("Touch and slide to read a sleep stage.")
+            .chartXAxis {
+                AxisMarks { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let date = value.as(Date.self) { Text(date, format: timeFormat) }
+                    }
+                }
+            }
             .chartYScale(domain: -0.5...2.5)
             .chartYAxis {
                 AxisMarks(position: expanded ? .leading : .automatic, values: [0, 1, 2]) { value in
