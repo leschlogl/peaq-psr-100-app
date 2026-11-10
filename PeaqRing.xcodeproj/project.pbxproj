@@ -23,9 +23,11 @@
 		87630FF5804EDB62651BAA90 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A93697559E6BE30788115EE /* InsightsView.swift */; };
 		93F17F51FF1E446C28AA0CC4 /* MetricReferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09992201299A3D32BC3C8776 /* MetricReferences.swift */; };
 		9B5A0B6697F651313FC04366 /* SleepCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E6D526B8F0E18498AA08BA /* SleepCorrectionTests.swift */; };
+		9BFC23F19567DABAC66D4C6F /* RingBatteryReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B1CD9E46005582CABB4BBCE /* RingBatteryReminderTests.swift */; };
 		A5B68AC55F2EE4A749771959 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3068649493D2C16D1E9A4356 /* ContentView.swift */; };
 		AAD9B670E561C1AF0B18C6BC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */; };
 		AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3054E0847294C864C2E95815 /* RingDeviceInformation.swift */; };
+		B6E0B72322D56342EAAD8F96 /* RingBatteryReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9FA4CE919FD2D55FE546518 /* RingBatteryReminders.swift */; };
 		C832CBE122FC3A6FDAA3D630 /* RingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */; };
 		C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */; };
 		D2B0C7D1C13272F475BE8DA4 /* WeeklyReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2554233F8DAF2B5257376DBA /* WeeklyReview.swift */; };
@@ -72,6 +74,7 @@
 		6B7F1902D381ED5945EBDB4E /* RingExtendedHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingExtendedHistory.swift; sourceTree = "<group>"; };
 		87EBAFE7C10358F226E1AF06 /* RingWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingWire.swift; sourceTree = "<group>"; };
 		8A93697559E6BE30788115EE /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
+		8B1CD9E46005582CABB4BBCE /* RingBatteryReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBatteryReminderTests.swift; sourceTree = "<group>"; };
 		922012732F56F83B0BCF858A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		956F3C339E4E63E6C8810579 /* RingBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBluetooth.swift; sourceTree = "<group>"; };
 		97DE058663B8C96E3FF0DE92 /* RingDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDeviceView.swift; sourceTree = "<group>"; };
@@ -79,6 +82,7 @@
 		AE4217ECF4BC70AC0F29A916 /* PeaqRingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeaqRingUITests.swift; sourceTree = "<group>"; };
 		BB5F907F04CC2CBAFC2C09DB /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		BBDD2F0C79C60FFF4CF4B59C /* WeeklyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewView.swift; sourceTree = "<group>"; };
+		C9FA4CE919FD2D55FE546518 /* RingBatteryReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBatteryReminders.swift; sourceTree = "<group>"; };
 		DC556AA1FCC8518659DD6E5E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewTests.swift; sourceTree = "<group>"; };
 		ED320FA17F276BBB9C10B54A /* RingDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDiscovery.swift; sourceTree = "<group>"; };
@@ -130,6 +134,7 @@
 		67F4192C31997EB01629EF63 /* Bluetooth */ = {
 			isa = PBXGroup;
 			children = (
+				C9FA4CE919FD2D55FE546518 /* RingBatteryReminders.swift */,
 				956F3C339E4E63E6C8810579 /* RingBluetooth.swift */,
 			);
 			path = Bluetooth;
@@ -161,6 +166,7 @@
 			children = (
 				62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */,
 				12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */,
+				8B1CD9E46005582CABB4BBCE /* RingBatteryReminderTests.swift */,
 				21E6D526B8F0E18498AA08BA /* SleepCorrectionTests.swift */,
 				E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */,
 			);
@@ -336,6 +342,7 @@
 				F35E06CBF516FCA8FA94A0BC /* PeaqRingApp.swift in Sources */,
 				EF74690757F298AADF7FF87A /* ReferencePreferences.swift in Sources */,
 				63270A6B04822AA741A4284B /* RingBattery.swift in Sources */,
+				B6E0B72322D56342EAAD8F96 /* RingBatteryReminders.swift in Sources */,
 				5D499060B6BE23D364D97A59 /* RingBluetooth.swift in Sources */,
 				AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */,
 				33F21958D2B6058A0F3A34C3 /* RingDeviceView.swift in Sources */,
@@ -357,6 +364,7 @@
 			files = (
 				044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */,
 				C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */,
+				9BFC23F19567DABAC66D4C6F /* RingBatteryReminderTests.swift in Sources */,
 				9B5A0B6697F651313FC04366 /* SleepCorrectionTests.swift in Sources */,
 				1B9F722444FFEA7ADE73785E /* WeeklyReviewTests.swift in Sources */,
 			);

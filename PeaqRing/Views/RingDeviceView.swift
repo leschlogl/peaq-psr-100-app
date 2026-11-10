@@ -1,4 +1,6 @@
 import SwiftUI
+import UserNotifications
+import UIKit
 
 struct RingDeviceView: View {
     @EnvironmentObject private var ring: RingBluetooth
@@ -35,6 +37,10 @@ struct RingDeviceView: View {
                 if !ring.selectedID.isEmpty {
                     syncSection
                     freshnessSection
+                    Section {
+                        NavigationLink("Battery") { RingBatterySettingsView() }
+                            .accessibilityIdentifier("ring-battery-settings")
+                    }
                 }
                 if !ring.isConnected && !ring.isConnecting {
                     Section("Available devices") {
@@ -157,6 +163,83 @@ struct RingDeviceView: View {
     private func dateLabel(_ date: Date?, missing: String = "No readings", includeTime: Bool = true) -> String {
         let format = Date.FormatStyle(date: .abbreviated, time: includeTime ? .shortened : .omitted, timeZone: timeZone)
         return date?.formatted(format) ?? missing
+    }
+}
+
+private struct RingBatterySettingsView: View {
+    @EnvironmentObject private var ring: RingBluetooth
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var notificationStatus: UNAuthorizationStatus?
+
+    var body: some View {
+        List {
+            Section {
+                if let reading = ring.batteryReminder.latest {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("\(reading.percent)%")
+                            .font(.largeTitle.weight(.semibold))
+                            .monospacedDigit()
+                        if ring.batteryReminder.enabled {
+                            let isLow = reading.percent <= ring.batteryReminder.threshold
+                            Text(isLow ? "At or below reminder threshold" : "Above reminder threshold")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(isLow ? Color.yellow : .secondary)
+                        }
+                        Text("Last checked \(reading.date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 6)
+                } else {
+                    Text("No battery reading yet").foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                Toggle("Low-battery reminders", isOn: Binding(
+                    get: { ring.batteryReminder.enabled },
+                    set: { enabled in
+                        ring.setBatteryReminderEnabled(enabled)
+                        if enabled { requestPermission() }
+                    }
+                ))
+                Picker("Remind me at", selection: Binding(
+                    get: { ring.batteryReminder.threshold },
+                    set: { ring.setBatteryReminderThreshold($0) }
+                )) {
+                    ForEach(RingBatteryReminderState.thresholds, id: \.self) { threshold in
+                        Text("\(threshold)%").tag(threshold)
+                    }
+                }
+                .disabled(!ring.batteryReminder.enabled)
+                if ring.batteryReminder.enabled {
+                    if notificationStatus == .denied {
+                        Button("Open notification settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        }
+                    } else if notificationStatus == .notDetermined {
+                        Button("Allow notifications") { requestPermission() }
+                    }
+                }
+            } footer: {
+                Text("One reminder per low-battery period. The app checks when it receives a fresh battery reading.")
+            }
+        }
+        .navigationTitle("Battery")
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        }
+    }
+
+    private func requestPermission() {
+        Task {
+            let center = UNUserNotificationCenter.current()
+            if await center.notificationSettings().authorizationStatus == .notDetermined {
+                _ = try? await center.requestAuthorization(options: [.alert, .sound])
+            }
+            notificationStatus = await center.notificationSettings().authorizationStatus
+        }
     }
 }
 

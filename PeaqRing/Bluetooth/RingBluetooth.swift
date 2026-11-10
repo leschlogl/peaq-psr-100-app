@@ -2,6 +2,7 @@ import Foundation
 import CoreBluetooth
 import Combine
 import UIKit
+import UserNotifications
 
 struct RingLog: Identifiable {
     let id = UUID()
@@ -33,6 +34,7 @@ final class RingBluetooth: NSObject, ObservableObject {
     @Published private(set) var historyReady = false
     @Published private(set) var isSyncing = false
     @Published private(set) var battery: Int?
+    @Published private(set) var batteryReminder = RingBatteryReminderState()
     @Published private(set) var deviceRevisions: [String: String] = [:]
     @Published private(set) var ringFirmwareVersion: String?
     @Published private(set) var bluetoothAddress: String?
@@ -59,6 +61,9 @@ final class RingBluetooth: NSObject, ObservableObject {
     private var notifyCharacteristic: CBCharacteristic?
     private var batteryTracker = RingBatteryTracker()
     private var batteryCharacteristic: CBCharacteristic?
+    private var deferredStandardBattery = false
+    private var completedVendorBatteryCheck = false
+    private var batteryReminderRequest: UUID?
     @Published private(set) var historyRevision = 0
     private var historySessionID = UUID()
     private var activeHistoryWorker: RingHistoryWorker?
@@ -94,6 +99,7 @@ final class RingBluetooth: NSObject, ObservableObject {
         // Retire prototype switches, including existing installations that left them off.
         for key in ["experimentalSync", "autoSync", "demoMode"] { UserDefaults.standard.removeObject(forKey: key) }
         if !selectedID.isEmpty {
+            batteryReminder = RingBatteryReminderState.load(ringID: selectedID)
             lastSync = UserDefaults.standard.object(forKey: "lastSync.\(selectedID)") as? Date
             syncHistory = RingSyncEntry.load(ringID: selectedID)
             tokenFreeHistoryConfirmed = UserDefaults.standard.bool(forKey: "tokenFreeHistory.\(selectedID)")
@@ -228,6 +234,8 @@ final class RingBluetooth: NSObject, ObservableObject {
             selectedID = id.uuidString
             UserDefaults.standard.set(selectedID, forKey: "ringID")
             battery = nil
+            batteryReminder = RingBatteryReminderState.load(ringID: selectedID)
+            batteryReminderRequest = nil
             lastSync = UserDefaults.standard.object(forKey: "lastSync.\(selectedID)") as? Date
             syncHistory = RingSyncEntry.load(ringID: selectedID)
             syncMessage = "History has not been synced yet."
@@ -282,6 +290,8 @@ final class RingBluetooth: NSObject, ObservableObject {
     func forget() {
         disconnect()
         selectedID = ""
+        batteryReminder = RingBatteryReminderState()
+        batteryReminderRequest = nil
         hasSessionToken = false
         tokenFreeHistoryConfirmed = false
         UserDefaults.standard.removeObject(forKey: "ringID")
@@ -309,6 +319,8 @@ final class RingBluetooth: NSObject, ObservableObject {
         serviceDiscoveryInProgress = false
         battery = nil
         batteryTracker = RingBatteryTracker()
+        deferredStandardBattery = false
+        completedVendorBatteryCheck = false
         deviceRevisions = [:]
         ringFirmwareVersion = nil; bluetoothAddress = nil
         writeCharacteristic = nil
@@ -318,6 +330,81 @@ final class RingBluetooth: NSObject, ObservableObject {
         peripheral = nil
         resolveWrite(.failure(RingConnectionError.unavailable))
     }
+    func setBatteryReminderEnabled(_ enabled: Bool) {
+        guard !selectedID.isEmpty else { return }
+        batteryReminder.enabled = enabled
+        if !enabled { batteryReminderRequest = nil }
+        batteryReminder.save(ringID: selectedID)
+    }
+
+    func setBatteryReminderThreshold(_ threshold: Int) {
+        guard !selectedID.isEmpty else { return }
+        batteryReminder.setThreshold(threshold)
+        batteryReminder.save(ringID: selectedID)
+    }
+
+    private func receiveBattery(_ percent: Int, source: RingBatteryReading.Source) {
+        guard !selectedID.isEmpty else { return }
+        let vendorExpected = peripheral?.services?.contains { service in
+            RingWire.applicationProfiles.contains { service.uuid == CBUUID(string: $0.service) }
+        } ?? true
+        let reading = RingBatteryReading(percent: percent, date: Date(), source: source)
+        guard batteryReminder.accept(reading, vendorExpected: vendorExpected) else {
+            battery = batteryReminder.latest?.percent
+            return
+        }
+        battery = percent
+        if source == .vendor {
+            deferredStandardBattery = false
+        } else if vendorExpected && (!completedVendorBatteryCheck || isSyncing) {
+            // Give the preferred vendor reply the full sync window before using 2A19 for reminders.
+            deferredStandardBattery = true
+            batteryReminder.save(ringID: selectedID)
+            return
+        }
+        evaluateBatteryReminder()
+    }
+
+    private func evaluateBatteryReminder() {
+        let shouldRemind = batteryReminder.evaluateFreshReading()
+        batteryReminder.save(ringID: selectedID)
+        guard shouldRemind else {
+            if let reading = batteryReminder.latest, reading.percent > batteryReminder.threshold {
+                batteryReminderRequest = nil
+            }
+            return
+        }
+        guard batteryReminderRequest == nil else { return }
+
+        let ringID = selectedID
+        let request = UUID()
+        batteryReminderRequest = request
+        Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if self.batteryReminderRequest == request { self.batteryReminderRequest = nil }
+            }
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
+            guard RingBatteryNotificationPresenter.canDeliver(settings.authorizationStatus),
+                  self.selectedID == ringID, self.batteryReminderRequest == request,
+                  self.batteryReminder.canRemind, let reading = self.batteryReminder.latest else { return }
+
+            // Persist the latch before scheduling so a restart cannot alert again for the same low period.
+            self.batteryReminder.setReminded(true)
+            self.batteryReminder.save(ringID: ringID)
+            do {
+                try await RingBatteryNotificationPresenter.deliver(percent: reading.percent, id: request, center: center)
+            } catch {
+                if self.selectedID == ringID, self.batteryReminderRequest == request {
+                    self.batteryReminder.setReminded(false)
+                    self.batteryReminder.save(ringID: ringID)
+                }
+                self.log("Could not schedule low-battery reminder.")
+            }
+        }
+    }
+
     func readBattery(requestRingStatus: Bool = true) {
         guard isConnected else { return }
         if let batteryCharacteristic { peripheral?.readValue(for: batteryCharacteristic) }
@@ -389,6 +476,11 @@ final class RingBluetooth: NSObject, ObservableObject {
                 try await Task.sleep(for: .seconds(18))
                 await worker.flush()
                 try Task.checkCancellation()
+                self.completedVendorBatteryCheck = true
+                if self.deferredStandardBattery {
+                    self.deferredStandardBattery = false
+                    self.evaluateBatteryReminder()
+                }
                 if self.syncStorageFailed {
                     self.completeSync(.storageFailure, ringID: ringID)
                 } else if self.receivedReadings > 0 {
@@ -445,7 +537,8 @@ final class RingBluetooth: NSObject, ObservableObject {
         rejectedFrames = update.rejectedFrames
         for (metric, count) in update.metricCounts { decodedMetricCounts[metric, default: 0] += count }
         if let value = update.battery {
-            batteryTracker.receiveRing(value); battery = batteryTracker.percent
+            batteryTracker.receiveRing(value)
+            receiveBattery(value, source: .vendor)
             log("Ring battery-status response received.")
         }
         if let version = update.firmwareVersion {
@@ -654,7 +747,8 @@ extension RingBluetooth: @preconcurrency CBPeripheralDelegate {
         }
         if characteristic === batteryCharacteristic {
             if let value = data.first, value <= 100 {
-                batteryTracker.receiveStandard(Int(value)); battery = batteryTracker.percent
+                batteryTracker.receiveStandard(Int(value))
+                receiveBattery(Int(value), source: .standard)
                 log("Standard battery read succeeded.")
             }
             return

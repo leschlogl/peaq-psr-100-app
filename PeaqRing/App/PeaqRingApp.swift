@@ -46,6 +46,7 @@ struct PeaqRingApp: App {
 
 final class RingAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        RingBatteryNotificationPresenter.install()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: BackgroundRefresh.identifier, using: .main) { task in
             guard let task = task as? BGAppRefreshTask else { task.setTaskCompleted(success: false); return }
             Task { @MainActor in BackgroundRefresh.run(task) }
