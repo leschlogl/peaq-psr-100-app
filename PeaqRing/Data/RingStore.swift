@@ -280,8 +280,67 @@ struct RingDashboardSnapshot: Sendable {
     let sourceCount: Int
     let hrvBaseline: HRVBaseline
 }
+enum SleepCorrection: String, Sendable {
+    case original, nap, excluded
+
+    var title: String {
+        switch self {
+        case .original: return "Included in sleep summaries"
+        case .nap: return "Saved as a nap"
+        case .excluded: return "Excluded from summaries"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .original: return "Appears in Sleep trends and Weekly Review."
+        case .nap: return "Visible in history and left out of overnight summaries."
+        case .excluded: return "The original session remains visible in history."
+        }
+    }
+}
+
+struct RingSleepSession: Identifiable, Sendable {
+    let id: String
+    let segments: [RingSleepSegment]
+    let anchors: Set<String>
+    let correction: SleepCorrection
+
+    static func anchor(_ segment: RingSleepSegment) -> String {
+        let source = segment.recordedClock == true ? "clock" : "legacy"
+        return "\(source)|\(segment.start.timeIntervalSince1970)"
+    }
+}
+
+enum SleepCorrectionStore {
+    static let revisionKey = "sleepCorrectionRevision"
+
+    private static func key(_ ringID: String) -> String { "sleepCorrections.\(ringID)" }
+
+    static func load(ringID: String, defaults: UserDefaults = .standard) -> [String: SleepCorrection] {
+        guard !ringID.isEmpty else { return [:] }
+        return (defaults.dictionary(forKey: key(ringID)) ?? [:]).compactMapValues {
+            ($0 as? String).flatMap(SleepCorrection.init(rawValue:))
+        }
+    }
+
+    @MainActor
+    static func set(_ correction: SleepCorrection, for session: RingSleepSession, ringID: String,
+                    defaults: UserDefaults = .standard) {
+        guard !ringID.isEmpty else { return }
+        var entries = load(ringID: ringID, defaults: defaults)
+        for anchor in session.anchors { entries.removeValue(forKey: anchor) }
+        if correction != .original { entries[session.id] = correction }
+        let key = key(ringID)
+        if entries.isEmpty { defaults.removeObject(forKey: key) }
+        else { defaults.set(entries.mapValues(\.rawValue), forKey: key) }
+        defaults.set(defaults.integer(forKey: revisionKey) &+ 1, forKey: revisionKey)
+    }
+}
+
 struct RingInsightsSnapshot: Sendable {
     let sleep: [RingSleepSegment]
+    let includedSleep: [RingSleepSegment]
     let workouts: [RingWorkout]
     let pai: [RingReading]
 }
@@ -293,6 +352,52 @@ struct RingSleepNightSummary: Sendable {
     let startOffset: TimeInterval
     let endOffset: TimeInterval
     let usesLocalClock: Bool
+}
+
+private struct RingSleepDayRecords {
+    var segments: [RingSleepSegment] = []
+    var aliases: [String: Set<String>] = [:]
+
+    func sessions(corrections: [String: SleepCorrection], calendar: Calendar) -> [RingSleepSession] {
+        let separation: TimeInterval = 30 * 60
+        var groups: [[RingSleepSegment]] = []
+        var lastAsleepEnd = Date.distantPast
+        var pendingAwake: [RingSleepSegment] = []
+        for segment in segments {
+            if segment.stage == .awake {
+                pendingAwake.append(segment)
+                continue
+            }
+            let start = segment.recordedClock == true ? segment.start : RingSnapshotLoader.recordedClockDate(segment.start, calendar: calendar)
+            let end = segment.recordedClock == true ? segment.end : RingSnapshotLoader.recordedClockDate(segment.end, calendar: calendar)
+            if groups.isEmpty || start.timeIntervalSince(lastAsleepEnd) >= separation {
+                groups.append([segment])
+            } else {
+                groups[groups.count - 1].append(contentsOf: pendingAwake)
+                groups[groups.count - 1].append(segment)
+            }
+            lastAsleepEnd = max(lastAsleepEnd, start, end)
+            pendingAwake.removeAll(keepingCapacity: true)
+        }
+        // A single session keeps the original timeline, including awake stages
+        // before its first sleep stage or after the last one.
+        if groups.count == 1 { groups[0] = segments }
+        return groups.map { group in
+            let id = RingSleepSession.anchor(group.first { $0.stage != .awake }!)
+            let keys = group.map(RingSleepSession.anchor)
+            let anchors = keys.reduce(into: Set(keys)) { all, key in all.formUnion(aliases[key] ?? []) }
+            let correction = corrections[id] ?? keys.compactMap { corrections[$0] }.first
+                ?? anchors.sorted().compactMap { corrections[$0] }.first ?? .original
+            return RingSleepSession(id: id, segments: group, anchors: anchors, correction: correction)
+        }
+    }
+
+    func included(corrections: [String: SleepCorrection], calendar: Calendar) -> [RingSleepSegment] {
+        guard !corrections.isEmpty else { return segments }
+        let sessions = sessions(corrections: corrections, calendar: calendar)
+        guard sessions.contains(where: { $0.correction != .original }) else { return segments }
+        return sessions.filter { $0.correction == .original }.flatMap(\.segments)
+    }
 }
 
 enum RingSnapshotLoader {
@@ -345,7 +450,7 @@ enum RingSnapshotLoader {
     }
 
     private static func sleepRecordsByDay(context: ModelContext, ringID: String, from firstDay: Date, through lastDay: Date,
-                                          calendar: Calendar) throws -> [Date: [RingSleepSegment]] {
+                                          calendar: Calendar) throws -> [Date: RingSleepDayRecords] {
         let previousDay = calendar.date(byAdding: .day, value: -1, to: firstDay)!
         let localStart = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: previousDay)!
         let localEnd = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: lastDay)!
@@ -366,12 +471,19 @@ enum RingSnapshotLoader {
             let cutoff = recordedClock ? recordedClockDate(localCutoff, calendar: calendar) : localCutoff
             if record.end <= cutoff { days[day, default: []].append(segment) }
         }
-        return days.mapValues { reconcileSleep($0, calendar: calendar) }
+        return days.mapValues { segments in
+            var day = RingSleepDayRecords()
+            day.segments = reconcileSleep(segments, calendar: calendar, aliases: &day.aliases)
+            return day
+        }
     }
 
-    private static func reconcileSleep(_ segments: [RingSleepSegment], calendar: Calendar) -> [RingSleepSegment] {
+    private static func reconcileSleep(_ segments: [RingSleepSegment], calendar: Calendar,
+                                       aliases: inout [String: Set<String>]) -> [RingSleepSegment] {
         let recorded = segments.filter { $0.recordedClock == true }
-        let legacy = sleepRuns(segments.filter { $0.recordedClock != true }).flatMap(removeShiftedSleepCopy)
+        let legacy = sleepRuns(segments.filter { $0.recordedClock != true }).flatMap {
+            removeShiftedSleepCopy($0, aliases: &aliases)
+        }
         guard !recorded.isEmpty else { return legacy }
         guard !legacy.isEmpty else { return recorded }
         var result = recorded
@@ -380,7 +492,7 @@ enum RingSnapshotLoader {
             let clockStart = recordedClockDate(run[0].start, calendar: calendar)
             let clockEnd = recordedClockDate(run.last!.end, calendar: calendar)
             let hasDistinctStages = run.count >= 3 && Set(run.map(\.stage)).count > 1
-            let matchesRecorded = recorded.contains { candidate in
+            let matchingStart = recorded.first { candidate in
                 let offset = candidate.start.timeIntervalSince(clockStart)
                 guard candidate.stage == run[0].stage, candidate.duration == run[0].duration,
                       offset == 0 || hasDistinctStages,
@@ -392,12 +504,21 @@ enum RingSnapshotLoader {
                     return match.stage == segment.stage && match.duration == segment.duration
                 }
             }
-            if !matchesRecorded {
-                result.append(contentsOf: run.filter { segment in
-                    let clockStart = recordedClockDate(segment.start, calendar: calendar)
-                    guard let match = recordedByStart[clockStart] else { return true }
-                    return match.stage != segment.stage || match.duration != segment.duration
-                })
+            if let matchingStart {
+                let offset = matchingStart.start.timeIntervalSince(clockStart)
+                for segment in run {
+                    let start = recordedClockDate(segment.start, calendar: calendar).addingTimeInterval(offset)
+                    if let match = recordedByStart[start] { addSleepAlias(segment, to: match, aliases: &aliases) }
+                }
+            } else {
+                for segment in run {
+                    let start = recordedClockDate(segment.start, calendar: calendar)
+                    if let match = recordedByStart[start], match.stage == segment.stage, match.duration == segment.duration {
+                        addSleepAlias(segment, to: match, aliases: &aliases)
+                    } else {
+                        result.append(segment)
+                    }
+                }
             }
         }
         return result.sorted {
@@ -405,6 +526,15 @@ enum RingSnapshotLoader {
             let second = $1.recordedClock == true ? $1.start : recordedClockDate($1.start, calendar: calendar)
             return first < second
         }
+    }
+
+    private static func addSleepAlias(_ old: RingSleepSegment, to segment: RingSleepSegment,
+                                      aliases: inout [String: Set<String>]) {
+        let oldKey = RingSleepSession.anchor(old)
+        let key = RingSleepSession.anchor(segment)
+        let previous = aliases[oldKey] ?? []
+        aliases[key, default: []].insert(oldKey)
+        aliases[key, default: []].formUnion(previous)
     }
 
     private static func sleepRuns(_ segments: [RingSleepSegment]) -> [[RingSleepSegment]] {
@@ -420,7 +550,8 @@ enum RingSnapshotLoader {
 
     // Old imports have no source time zone. Suppress only a complete second
     // copy of a stage sequence, leaving uncertain overlaps and naps intact.
-    private static func removeShiftedSleepCopy(_ group: [RingSleepSegment]) -> [RingSleepSegment] {
+    private static func removeShiftedSleepCopy(_ group: [RingSleepSegment],
+                                               aliases: inout [String: Set<String>]) -> [RingSleepSegment] {
         guard group.count >= 6, group.count.isMultiple(of: 2) else { return group }
         let first = group[0]
         let byStart = Dictionary(uniqueKeysWithValues: group.map { ($0.start, $0) })
@@ -439,6 +570,11 @@ enum RingSnapshotLoader {
             }
             if remaining.isEmpty, let last = original.last, last.end > candidate.start,
                Set(original.map(\.stage)).count > 1 {
+                for segment in original {
+                    if let duplicate = byStart[segment.start.addingTimeInterval(offset)] {
+                        addSleepAlias(duplicate, to: segment, aliases: &aliases)
+                    }
+                }
                 return original
             }
         }
@@ -447,19 +583,32 @@ enum RingSnapshotLoader {
 
     static func sleepNight(container: ModelContainer, ringID: String, day: Date, calendar: Calendar = .current) async throws -> [RingSleepSegment] {
         let task = Task.detached(priority: .utility) {
-            try sleepRecordsByDay(context: ModelContext(container), ringID: ringID, from: day, through: day, calendar: calendar)[day] ?? []
+            try sleepRecordsByDay(context: ModelContext(container), ringID: ringID,
+                                  from: day, through: day, calendar: calendar)[day]?.segments ?? []
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
+    static func sleepSessions(container: ModelContainer, ringID: String, day: Date,
+                              calendar: Calendar = .current) async throws -> [RingSleepSession] {
+        let task = Task.detached(priority: .utility) {
+            let records = try sleepRecordsByDay(context: ModelContext(container), ringID: ringID,
+                                                from: day, through: day, calendar: calendar)
+            return records[day]?.sessions(corrections: SleepCorrectionStore.load(ringID: ringID), calendar: calendar) ?? []
         }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 
     static func sleepTotals(container: ModelContainer, ringID: String, from firstDay: Date, through lastDay: Date,
-                            calendar: Calendar = .current) async throws -> [Date: TimeInterval] {
+                            calendar: Calendar = .current, includeExcluded: Bool = false) async throws -> [Date: TimeInterval] {
         let task = Task.detached(priority: .utility) {
             let records = try sleepRecordsByDay(context: ModelContext(container), ringID: ringID, from: firstDay,
                                                 through: lastDay, calendar: calendar)
+            let corrections = includeExcluded ? [:] : SleepCorrectionStore.load(ringID: ringID)
             var totals: [Date: TimeInterval] = [:]
-            for (day, segments) in records {
+            for (day, record) in records {
                 try Task.checkCancellation()
+                let segments = record.included(corrections: corrections, calendar: calendar)
                 let asleep = segments.filter { $0.stage != .awake }.reduce(0) { $0 + $1.duration }
                 if asleep > 0 { totals[day] = asleep }
             }
@@ -474,9 +623,11 @@ enum RingSnapshotLoader {
             let records = try sleepRecordsByDay(context: ModelContext(container), ringID: ringID, from: firstDay,
                                                 through: lastDay, calendar: calendar)
             let clock = recordedClockCalendar(calendar)
+            let corrections = SleepCorrectionStore.load(ringID: ringID)
             var summaries: [Date: RingSleepNightSummary] = [:]
-            for (day, segments) in records {
+            for (day, record) in records {
                 try Task.checkCancellation()
+                let segments = record.included(corrections: corrections, calendar: calendar)
                 let midnight = clock.startOfDay(for: recordedClockDate(day, calendar: calendar))
                 var start = Date.distantFuture
                 var end = Date.distantPast
@@ -498,6 +649,9 @@ enum RingSnapshotLoader {
                 if duration > 0 {
                     summaries[day] = RingSleepNightSummary(asleepDuration: duration, startOffset: start.timeIntervalSince(midnight),
                         endOffset: end.timeIntervalSince(midnight), usesLocalClock: usesLocalClock)
+                } else if record.segments.contains(where: { $0.stage != .awake }) {
+                    // Retain the day's detail link even if it has no plotted overnight sleep.
+                    summaries[day] = RingSleepNightSummary(asleepDuration: 0, startOffset: 0, endOffset: 0, usesLocalClock: false)
                 }
             }
             return summaries
@@ -549,8 +703,11 @@ enum RingSnapshotLoader {
         let task = Task.detached(priority: .utility) {
             let context = ModelContext(container)
             var sleep: [RingSleepSegment] = []
-            if let day = try latestSleepDay(context: context, ringID: ringID, calendar: calendar) {
-                sleep = try sleepRecordsByDay(context: context, ringID: ringID, from: day, through: day, calendar: calendar)[day] ?? []
+            var includedSleep: [RingSleepSegment] = []
+            if let day = try latestSleepDay(context: context, ringID: ringID, calendar: calendar),
+               let record = try sleepRecordsByDay(context: context, ringID: ringID, from: day, through: day, calendar: calendar)[day] {
+                sleep = record.segments
+                includedSleep = record.included(corrections: SleepCorrectionStore.load(ringID: ringID), calendar: calendar)
             }
             var recentWorkouts = FetchDescriptor<StoredWorkout>(predicate: #Predicate { $0.ringID == ringID }, sortBy: [SortDescriptor(\.start, order: .reverse)])
             recentWorkouts.fetchLimit = 20
@@ -559,7 +716,7 @@ enum RingSnapshotLoader {
             recentPAI.fetchLimit = 14
             let pai = try context.fetch(recentPAI)
             return RingInsightsSnapshot(
-                sleep: sleep,
+                sleep: sleep, includedSleep: includedSleep,
                 workouts: workouts.map { RingWorkout(start: $0.start, end: $0.end, typeCode: $0.typeCode, steps: $0.steps, calories: $0.calories, distanceMetres: $0.distanceMetres, averageHeartRate: $0.averageHeartRate) },
                 pai: pai.map { RingReading(metric: .pai, value: $0.value, date: $0.date) })
         }

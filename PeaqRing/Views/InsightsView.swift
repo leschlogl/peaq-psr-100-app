@@ -7,6 +7,8 @@ struct InsightsView: View {
     @State private var showingPAIReference = false
     @EnvironmentObject private var ring: RingBluetooth
     @State private var allSleep: [RingSleepSegment] = []
+    @State private var includedSleep: [RingSleepSegment] = []
+    @AppStorage(SleepCorrectionStore.revisionKey) private var sleepCorrectionRevision = 0
     @State private var workouts: [RingWorkout] = []
     @State private var readings: [RingReading] = []
     @State private var selectedPAITime: Date?
@@ -18,7 +20,7 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Beyond the daily numbers").font(.subheadline).foregroundStyle(.secondary)
                     weeklyReviewLink
-                    SleepInsightsCard(sleep: allSleep) { selectedSleepDay = $0 }.id(ring.selectedID)
+                    SleepInsightsCard(sleep: allSleep, includedSleep: includedSleep) { selectedSleepDay = $0 }.id(ring.selectedID)
                     paiCard
                     exerciseCard
                 }.padding(20)
@@ -28,19 +30,19 @@ struct InsightsView: View {
             .navigationDestination(item: $selectedSleepDay) { day in
                 SleepNightDetail(day: day)
             }
-            .task(id: "\(ring.selectedID)|\(ring.historyRevision)") {
+            .task(id: "\(ring.selectedID)|\(ring.historyRevision)|\(sleepCorrectionRevision)") {
                 let ringID = ring.selectedID
                 do {
                     let snapshot = try await RingSnapshotLoader.insights(container: RingStore.shared.get().container, ringID: ringID)
                     guard !Task.isCancelled, ring.selectedID == ringID else { return }
-                    allSleep = snapshot.sleep; workouts = snapshot.workouts; readings = snapshot.pai
+                    allSleep = snapshot.sleep; includedSleep = snapshot.includedSleep; workouts = snapshot.workouts; readings = snapshot.pai
                 } catch {
                     guard !Task.isCancelled else { return }
                     ring.log("Insights history could not be loaded.")
                 }
             }
             .onChange(of: ring.selectedID) { _, _ in
-                allSleep = []; workouts = []; readings = []
+                allSleep = []; includedSleep = []; workouts = []; readings = []
                 selectedPAITime = nil; selectedSleepDay = nil
             }
             .sheet(isPresented: $showingPAIReference) { MetricReferenceView(metric: .pai, value: pai?.value) }
@@ -209,8 +211,10 @@ private enum SleepTrendMode: Hashable {
 
 private struct SleepInsightsCard: View {
     let sleep: [RingSleepSegment]
+    let includedSleep: [RingSleepSegment]
     let onSelectNight: (Date) -> Void
     @EnvironmentObject private var ring: RingBluetooth
+    @AppStorage(SleepCorrectionStore.revisionKey) private var sleepCorrectionRevision = 0
     @State private var range = 1
     @State private var mode = SleepTrendMode.duration
     @State private var showingInfo = false
@@ -275,7 +279,18 @@ private struct SleepInsightsCard: View {
                     .accessibilityLabel("Open sleep calendar")
                 }
                 if range == 1 {
-                    SleepNightTimeline(sleep: sleep)
+                    if includedSleep.isEmpty {
+                        Text("No overnight sleep included").font(.subheadline).foregroundStyle(.secondary)
+                    } else {
+                        SleepNightTimeline(sleep: includedSleep)
+                    }
+                    Button { onSelectNight(latestDay) } label: {
+                        Label("View night", systemImage: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.indigo)
                 } else if loadedFirstDay == firstDay, let summaries {
                     let days = (0..<range).compactMap { calendar.date(byAdding: .day, value: $0, to: firstDay) }
                     SleepTrend(days: days, summaries: summaries, mode: mode, onSelect: onSelectNight)
@@ -313,7 +328,7 @@ private struct SleepInsightsCard: View {
             }
             .presentationDetents([.large])
         }
-        .task(id: "\(range)|\(latestDay?.timeIntervalSince1970 ?? 0)|\(ring.historyRevision)") {
+        .task(id: "\(range)|\(latestDay?.timeIntervalSince1970 ?? 0)|\(ring.historyRevision)|\(sleepCorrectionRevision)") {
             trendFailed = false
             guard range > 1, let latestDay else { return }
             let calendar = Calendar.current
@@ -340,12 +355,13 @@ private struct SleepTrend: View {
     @State private var selection: Int?
 
     private var selectedIndex: Int { selection ?? days.count - 1 }
+    private var included: [RingSleepNightSummary] { summaries.values.filter { $0.asleepDuration > 0 } }
     private var axisRange: ClosedRange<Double> {
         if mode == .duration {
-            return 0...max(10, (summaries.values.map(\.asleepDuration).max() ?? 0) / 3600)
+            return 0...max(10, (included.map(\.asleepDuration).max() ?? 0) / 3600)
         }
-        let first = (summaries.values.map(\.startOffset).min() ?? 0) / 3600
-        let last = (summaries.values.map(\.endOffset).max() ?? 0) / 3600
+        let first = (included.map(\.startOffset).min() ?? 0) / 3600
+        let last = (included.map(\.endOffset).max() ?? 0) / 3600
         // Negative values put early clock times at the top of the chart.
         return -max(9, (last / 3).rounded(.up) * 3)...(-min(-3, (first / 3).rounded(.down) * 3))
     }
@@ -360,18 +376,18 @@ private struct SleepTrend: View {
         VStack(alignment: .leading, spacing: 8) {
             if mode == .timing {
                 Text("Ring clock time").font(.headline)
-                Text("\(summaries.count) of \(days.count) nights recorded")
+                Text("\(included.count) of \(days.count) nights included")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                let average = summaries.isEmpty ? nil : summaries.values.reduce(0) { $0 + $1.asleepDuration } / Double(summaries.count)
+                let average = included.isEmpty ? nil : included.reduce(0) { $0 + $1.asleepDuration } / Double(included.count)
                 Text(average.map(duration) ?? "—").font(.system(size: 34, weight: .semibold, design: .rounded))
-                Text("Average asleep · \(summaries.count) of \(days.count) nights recorded")
+                Text("Average asleep · \(included.count) of \(days.count) nights included")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
             Chart {
                 ForEach(days.indices, id: \.self) { index in
-                    if let summary = summaries[days[index]] {
+                    if let summary = summaries[days[index]], summary.asleepDuration > 0 {
                         let lower = mode == .timing ? -summary.endOffset / 3600 : 0
                         let upper = mode == .timing ? -summary.startOffset / 3600 : summary.asleepDuration / 3600
                         RectangleMark(xStart: .value("Day start", Double(index) + 0.16),
@@ -425,7 +441,7 @@ private struct SleepTrend: View {
                     Text(day, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("sleep-trend-selected-date")
-                    if let summary = summaries[day] {
+                    if let summary = summaries[day], summary.asleepDuration > 0 {
                         if mode == .timing {
                             Text("\(clock(summary.startOffset)) – \(clock(summary.endOffset))")
                                 .font(.subheadline.weight(.medium))
@@ -435,7 +451,8 @@ private struct SleepTrend: View {
                             Text("\(duration(summary.asleepDuration)) asleep").font(.subheadline.weight(.medium))
                         }
                     } else {
-                        Text("No sleep recorded").font(.subheadline).foregroundStyle(.secondary)
+                        Text(summaries[day] == nil ? "No sleep recorded" : "No overnight sleep included")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
@@ -493,7 +510,7 @@ private struct SleepHistoryCalendar: View {
             let end = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: visibleMonth)!
             do {
                 let totals = try await RingSnapshotLoader.sleepTotals(container: RingStore.shared.get().container,
-                    ringID: ring.selectedID, from: visibleMonth, through: end, calendar: calendar)
+                    ringID: ring.selectedID, from: visibleMonth, through: end, calendar: calendar, includeExcluded: true)
                 guard !Task.isCancelled else { return }
                 availableDays = Set(totals.keys)
             } catch {
@@ -508,8 +525,14 @@ private struct SleepHistoryCalendar: View {
 private struct SleepNightDetail: View {
     let day: Date
     @EnvironmentObject private var ring: RingBluetooth
-    @State private var sleep: [RingSleepSegment]?
+    @AppStorage(SleepCorrectionStore.revisionKey) private var sleepCorrectionRevision = 0
+    @State private var sessions: [RingSleepSession]?
+    @State private var selectedSessionID: String?
     @State private var failed = false
+
+    private var selectedSession: RingSleepSession? {
+        sessions?.first { $0.id == selectedSessionID } ?? sessions?.first
+    }
 
     var body: some View {
         ScrollView {
@@ -524,9 +547,27 @@ private struct SleepNightDetail: View {
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("sleep-night-date")
                 }
-                if let sleep {
-                    if sleep.contains(where: { $0.stage != .awake }) {
-                        SleepNightTimeline(sleep: sleep, expanded: true)
+                if let sessions {
+                    if sessions.count > 1 {
+                        Picker("Sleep session", selection: Binding(
+                            get: { selectedSession?.id ?? "" },
+                            set: { selectedSessionID = $0 }
+                        )) {
+                            ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                                Text(sessionLabel(session, index: index)).tag(session.id)
+                            }
+                        }
+                        .accessibilityIdentifier("sleep-session-picker")
+                    }
+                    if let session = selectedSession {
+                        SleepNightTimeline(sleep: session.segments, expanded: true, correction: session.correction)
+                            .id(session.id)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(session.correction.title).font(.headline)
+                                .accessibilityIdentifier("sleep-session-status")
+                            Text(session.correction.detail).font(.caption).foregroundStyle(.secondary)
+                        }
+                        .insightCard()
                     } else {
                         Text("No sleep recorded").foregroundStyle(.secondary)
                     }
@@ -542,25 +583,63 @@ private struct SleepNightDetail: View {
         .background(Color(red: 0.035, green: 0.055, blue: 0.065))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-        .task(id: "\(day)|\(ring.selectedID)|\(ring.historyRevision)") {
+        .toolbar {
+            if let session = selectedSession {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if session.correction != .nap {
+                            Button("Mark as nap", systemImage: "moon.zzz") {
+                                SleepCorrectionStore.set(.nap, for: session, ringID: ring.selectedID)
+                            }
+                        }
+                        if session.correction != .excluded {
+                            Button("Exclude from summaries", systemImage: "eye.slash") {
+                                SleepCorrectionStore.set(.excluded, for: session, ringID: ring.selectedID)
+                            }
+                        }
+                        if session.correction != .original {
+                            Button("Restore original", systemImage: "arrow.uturn.backward") {
+                                SleepCorrectionStore.set(.original, for: session, ringID: ring.selectedID)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "pencil")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel("Edit sleep session")
+                    .accessibilityIdentifier("sleep-session-edit")
+                }
+            }
+        }
+        .task(id: "\(day)|\(ring.selectedID)|\(ring.historyRevision)|\(sleepCorrectionRevision)") {
             failed = false
+            let ringID = ring.selectedID
             do {
-                let result = try await RingSnapshotLoader.sleepNight(container: RingStore.shared.get().container,
-                    ringID: ring.selectedID, day: day)
-                guard !Task.isCancelled else { return }
-                sleep = result
+                let result = try await RingSnapshotLoader.sleepSessions(container: RingStore.shared.get().container,
+                    ringID: ringID, day: day)
+                guard !Task.isCancelled, ring.selectedID == ringID else { return }
+                sessions = result
             } catch {
-                guard !Task.isCancelled else { return }
-                sleep = nil
+                guard !Task.isCancelled, ring.selectedID == ringID else { return }
+                sessions = nil
                 failed = true
             }
         }
+    }
+
+    private func sessionLabel(_ session: RingSleepSession, index: Int) -> String {
+        let label = session.correction == .nap ? "Nap" : "Session \(index + 1)"
+        let first = session.segments.first { $0.stage != .awake }!
+        let zone = first.recordedClock == true ? TimeZone(secondsFromGMT: 0)! : .current
+        let start = first.start.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: zone))
+        return "\(label) · \(start)"
     }
 }
 
 private struct SleepNightTimeline: View {
     let sleep: [RingSleepSegment]
     var expanded = false
+    var correction = SleepCorrection.original
     @State private var selectedSleepTime: Date?
 
     private var usesRecordedClock: Bool { sleep.contains { $0.recordedClock == true } }
@@ -578,7 +657,11 @@ private struct SleepNightTimeline: View {
             let asleep = sleep.filter { $0.stage != .awake }.reduce(0.0) { $0 + $1.duration }
             HStack(spacing: 12) {
                 Text(duration(asleep)).font(.system(size: expanded ? 42 : 34, weight: .semibold, design: .rounded))
-                if asleep > 0 {
+                if correction == .nap {
+                    insightBadge("Nap", color: .indigo)
+                } else if correction == .excluded {
+                    insightBadge("Excluded", color: .secondary)
+                } else if asleep > 0 {
                     let badge = sleepBadge(hours: asleep / 3600)
                     insightBadge(badge.title, color: badge.color)
                         .accessibilityLabel("Sleep duration: \(badge.title)")

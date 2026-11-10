@@ -9,6 +9,7 @@ My PEAQ reads the ring over Bluetooth and saves decoded history inside its app c
 | Health and activity readings, sleep stages, exercise summaries, and PAI scores | A SwiftData database in the app container |
 | Activity goals, optional profile details, sync interval, and remembered ring and sync state | App preferences using UserDefaults |
 | Up to 30 recent sync results per ring, with timestamps, outcomes, and aggregate counts | App preferences |
+| Sleep session labels and exclusions | App preferences, separate from the original ring data |
 | A legacy ring session token, if present | The iOS Keychain, separately from the history database |
 | Recent connection diagnostics | A bounded report in the app’s cache |
 

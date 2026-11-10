@@ -22,6 +22,7 @@
 		82088C37BC41A52DDC8FF828 /* RingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99ABA168F9BDA2EA146DA03C /* RingSettingsView.swift */; };
 		87630FF5804EDB62651BAA90 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A93697559E6BE30788115EE /* InsightsView.swift */; };
 		93F17F51FF1E446C28AA0CC4 /* MetricReferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09992201299A3D32BC3C8776 /* MetricReferences.swift */; };
+		9B5A0B6697F651313FC04366 /* SleepCorrectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E6D526B8F0E18498AA08BA /* SleepCorrectionTests.swift */; };
 		A5B68AC55F2EE4A749771959 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3068649493D2C16D1E9A4356 /* ContentView.swift */; };
 		AAD9B670E561C1AF0B18C6BC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F5A60CD27109C9320C924C8D /* PrivacyInfo.xcprivacy */; };
 		AE0EEADEEB41217EA9144162 /* RingDeviceInformation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3054E0847294C864C2E95815 /* RingDeviceInformation.swift */; };
@@ -57,6 +58,7 @@
 		0EFD2654A601A5175F15CC6D /* PeaqRing.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PeaqRing.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		105E6A2FBFEA4AD9B58FB13D /* RingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingStore.swift; sourceTree = "<group>"; };
 		12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferencePreferencesTests.swift; sourceTree = "<group>"; };
+		21E6D526B8F0E18498AA08BA /* SleepCorrectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepCorrectionTests.swift; sourceTree = "<group>"; };
 		2554233F8DAF2B5257376DBA /* WeeklyReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReview.swift; sourceTree = "<group>"; };
 		3054E0847294C864C2E95815 /* RingDeviceInformation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingDeviceInformation.swift; sourceTree = "<group>"; };
 		3068649493D2C16D1E9A4356 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 			children = (
 				62168C1BA87C5D4314A4853C /* HistoryStorageTests.swift */,
 				12A443350115D2F0DD155D69 /* ReferencePreferencesTests.swift */,
+				21E6D526B8F0E18498AA08BA /* SleepCorrectionTests.swift */,
 				E675AA886E4D2CFC7C2129C3 /* WeeklyReviewTests.swift */,
 			);
 			path = PeaqRingTests;
@@ -354,6 +357,7 @@
 			files = (
 				044794F122A8BB48B2E0F719 /* HistoryStorageTests.swift in Sources */,
 				C9189D2DA9B97634BF5E5F54 /* ReferencePreferencesTests.swift in Sources */,
+				9B5A0B6697F651313FC04366 /* SleepCorrectionTests.swift in Sources */,
 				1B9F722444FFEA7ADE73785E /* WeeklyReviewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

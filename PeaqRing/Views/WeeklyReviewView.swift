@@ -8,6 +8,7 @@ struct WeeklyReviewView: View {
     @AppStorage(ActivityGoalDefaults.stepsKey) private var stepGoal = ActivityGoalDefaults.steps
     @AppStorage(ActivityGoalDefaults.caloriesKey) private var energyGoal = ActivityGoalDefaults.calories
     @AppStorage(ActivityGoalDefaults.distanceKey) private var distanceGoal = ActivityGoalDefaults.distance
+    @AppStorage(SleepCorrectionStore.revisionKey) private var sleepCorrectionRevision = 0
 
     @State private var weeksBack = 0
     @State private var metric = ReviewMetric.sleep
@@ -55,7 +56,7 @@ struct WeeklyReviewView: View {
             weeksBack = 0
             selectedDay = nil
         }
-        .task(id: "\(period.start)|\(calendar)|\(ring.selectedID)|\(ring.historyRevision)") {
+        .task(id: "\(period.start)|\(calendar)|\(ring.selectedID)|\(ring.historyRevision)|\(sleepCorrectionRevision)") {
             let ringID = ring.selectedID
             snapshot = nil
             loadFailed = false
