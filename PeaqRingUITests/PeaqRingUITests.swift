@@ -2,6 +2,25 @@ import XCTest
 
 final class PeaqRingUITests: XCTestCase {
     @MainActor
+    func testStepHistoryOpensFromRingAndOffersRangesAndCalendar() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        let steps = app.buttons["step-history-link"]
+        XCTAssertTrue(steps.waitForExistence(timeout: 10))
+        steps.tap()
+        XCTAssertTrue(app.navigationBars["Step history"].waitForExistence(timeout: 5))
+        let range = app.segmentedControls["step-history-range"]
+        range.buttons["7 days"].tap()
+        XCTAssertTrue(range.buttons["7 days"].isSelected)
+        range.buttons["30 days"].tap()
+        XCTAssertTrue(range.buttons["30 days"].isSelected)
+        app.buttons["step-history-calendar"].tap()
+        XCTAssertTrue(app.navigationBars["Choose a day"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Days with saved step readings"].exists)
+    }
+
+    @MainActor
     func testHistoryCalendarOpensWithoutExtraDaySelector() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -64,7 +83,7 @@ final class PeaqRingUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["PAI Vitality Index"].exists)
         XCTAssertTrue(app.staticTexts["Awaiting first PAI score"].exists)
         app.swipeUp()
-        XCTAssertTrue(app.staticTexts["No exercise records received"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Exercise records"].exists)
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Daily activity goals"].exists)
         app.buttons.containing(.staticText, identifier: "Automatic sync").firstMatch.tap()

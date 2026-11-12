@@ -1,6 +1,17 @@
 # My PEAQ roadmap
 
-My PEAQ already shows sleep history, activity goals, workouts, PAI, and health trends from the PEAQ PSR 100. The next features will help people see what changed, compare it with their usual patterns, and record what was different that day.
+My PEAQ shows sleep history, activity goals, step history, PAI, and health trends from the PEAQ PSR 100. The next features will help people see what changed, compare it with their usual patterns, and record what was different that day.
+
+## Implemented in 0.6.0
+
+### Step history
+
+- Tap the steps ring on **Today** to browse hourly step changes or see the last recorded daily totals over 7 or 30 days against your step goal.
+- Use the calendar to find days with saved step readings. Slide across the chart to inspect values. Hourly labels use local time, and gaps stay visible when the readings cannot establish an hourly count.
+
+### Exercise records
+
+- Removed the **Exercise records** card from Insights while we verify how the original app records and syncs workouts. My PEAQ still stores workout records received from the ring.
 
 ## Implemented in 0.5.0
 
@@ -79,8 +90,10 @@ My PEAQ already shows sleep history, activity goals, workouts, PAI, and health t
 
 ## Further ideas
 
-### 10. Workout details
+### 10. Workout recording and details
 
+- Verify how the original app handles workout sessions and which readings the ring can provide live.
+- If workouts need to be recorded in My PEAQ, explore a Start/Stop flow that saves session readings locally.
 - Give each workout a detail screen with duration, distance, pace, and heart-rate zones where the ring provides enough data.
 - Let users rename and categorize workouts.
 
@@ -92,10 +105,6 @@ My PEAQ already shows sleep history, activity goals, workouts, PAI, and health t
 ### 12. Customizable Today screen
 
 - Let users pin, reorder, or hide dashboard cards to match what they use most.
-
-### 13. Activity by time of day
-
-- Show hourly steps and active periods so users can see when they moved during the day.
 
 ### 14. Compare two periods
 

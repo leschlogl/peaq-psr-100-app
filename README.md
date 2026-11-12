@@ -2,8 +2,8 @@
 
 An unofficial iPhone companion for the **PEAQ PSR 100** smart ring. It reads the ring over Bluetooth and keeps history on your iPhone.
 
-- **Today** shows activity goals, recent readings, and hourly or daily trends. Open the calendar to browse saved days.
-- **Insights** shows recorded sleep stages, the ring’s PAI score, and saved exercise sessions when available.
+- **Today** shows activity goals, recent readings, and hourly or daily trends. Tap the steps ring for step history, or open the calendar to browse saved days.
+- **Insights** shows sleep history, the ring’s PAI score, weekly reviews, and personal baselines.
 - **My ring** shows connection status, battery, firmware information, and shareable diagnostics.
 - **Settings** holds activity goals, the optional reference profile, and the foreground sync interval.
 

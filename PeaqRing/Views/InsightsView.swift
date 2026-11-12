@@ -9,7 +9,6 @@ struct InsightsView: View {
     @State private var allSleep: [RingSleepSegment] = []
     @State private var includedSleep: [RingSleepSegment] = []
     @AppStorage(SleepCorrectionStore.revisionKey) private var sleepCorrectionRevision = 0
-    @State private var workouts: [RingWorkout] = []
     @State private var readings: [RingReading] = []
     @State private var selectedPAITime: Date?
     @State private var selectedSleepDay: Date?
@@ -23,7 +22,6 @@ struct InsightsView: View {
                     personalBaselinesLink
                     SleepInsightsCard(sleep: allSleep, includedSleep: includedSleep) { selectedSleepDay = $0 }.id(ring.selectedID)
                     paiCard
-                    exerciseCard
                 }.padding(20)
             }
             .background(Color(red: 0.035, green: 0.055, blue: 0.065))
@@ -36,14 +34,14 @@ struct InsightsView: View {
                 do {
                     let snapshot = try await RingSnapshotLoader.insights(container: RingStore.shared.get().container, ringID: ringID)
                     guard !Task.isCancelled, ring.selectedID == ringID else { return }
-                    allSleep = snapshot.sleep; includedSleep = snapshot.includedSleep; workouts = snapshot.workouts; readings = snapshot.pai
+                    allSleep = snapshot.sleep; includedSleep = snapshot.includedSleep; readings = snapshot.pai
                 } catch {
                     guard !Task.isCancelled else { return }
                     ring.log("Insights history could not be loaded.")
                 }
             }
             .onChange(of: ring.selectedID) { _, _ in
-                allSleep = []; includedSleep = []; workouts = []; readings = []
+                allSleep = []; includedSleep = []; readings = []
                 selectedPAITime = nil; selectedSleepDay = nil
             }
             .sheet(isPresented: $showingPAIReference) { MetricReferenceView(metric: .pai, value: pai?.value) }
@@ -157,40 +155,6 @@ struct InsightsView: View {
                 Text("Your ring’s daily score will appear after syncing.").font(.subheadline).foregroundStyle(.secondary)
             }
         }.insightCard().accessibilityIdentifier("pai-panel")
-    }
-    private var exerciseCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("Exercise records", systemImage: "figure.run").font(.title2.bold()).foregroundStyle(.orange)
-            if workouts.isEmpty {
-                Text("No exercise records received").font(.headline)
-                Text("Completed sessions stored by the ring will appear here after syncing. Sessions kept only in the original app cannot be imported through the ring.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(workouts.prefix(20)), id: \.displayKey) { workout in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Exercise session").font(.headline)
-                            Spacer()
-                            Text(duration(workout.end.timeIntervalSince(workout.start))).font(.subheadline.weight(.medium))
-                        }
-                        Text(workout.start, format: .dateTime.month(.abbreviated).day().hour().minute()).font(.caption).foregroundStyle(.secondary)
-                        Text("\(workout.steps.formatted()) steps · \(workout.calories.formatted(.number.precision(.fractionLength(0)))) kcal")
-                            .font(.subheadline)
-                        if let heartRate = workout.averageHeartRate {
-                            Text("\(heartRate) bpm average").font(.caption)
-                            if let zone = MetricReferences.category(for: .heartRate, value: Double(heartRate), profile: references.profile, context: .exercise) {
-                                ReferenceCategoryBadge(category: zone)
-                            }
-                        }
-                        if let distance = workout.distanceMetres {
-                            Text("\((distance / 1000).formatted(.number.precision(.fractionLength(2)))) km").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }.padding(.vertical, 8)
-                    Divider()
-                }
-            }
-            Text("Session details await comparison with the original app.").font(.caption).foregroundStyle(.secondary)
-        }.insightCard()
     }
     private func infoButton(_ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {

@@ -403,11 +403,11 @@ private struct RingSleepDayRecords {
 enum RingSnapshotLoader {
     /// At most one indexed existence lookup per past/current day in the visible
     /// month. No full-history scan and no health values cross into the picker.
-    static func availableDashboardDays(container: ModelContainer, ringID: String, month: Date, now: Date = Date(), calendar: Calendar = .current) async throws -> Set<Date> {
+    static func availableDashboardDays(container: ModelContainer, ringID: String, month: Date, metric: RingMetric? = nil, now: Date = Date(), calendar: Calendar = .current) async throws -> Set<Date> {
         let task = Task.detached(priority: .utility) {
             guard !ringID.isEmpty, let interval = calendar.dateInterval(of: .month, for: month) else { return Set<Date>() }
             let context = ModelContext(container)
-            let names = RingMetric.dashboardMetrics.map(\.rawValue)
+            let names = (metric.map { [$0] } ?? RingMetric.dashboardMetrics).map(\.rawValue)
             var day = interval.start, available: Set<Date> = []
             while day < interval.end && day <= now {
                 try Task.checkCancellation()
@@ -424,6 +424,27 @@ enum RingSnapshotLoader {
         }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
+    static func stepHistory(container: ModelContainer, ringID: String, days: Int, selectedDay: Date?,
+                            now: Date = Date(), calendar: Calendar = .current) async throws -> RingStepHistory {
+        let task = Task.detached(priority: .utility) {
+            let window = RingHistoryWindow(selectedDay: selectedDay, days: days, now: now, calendar: calendar)
+            var history = RingStepHistory(window: window, calendar: calendar)
+            guard !ringID.isEmpty else { return history }
+            let context = ModelContext(container)
+            let start = window.trendStart, end = window.nextDay
+            let metricName = RingMetric.steps.rawValue
+            let request = FetchDescriptor<StoredReading>(predicate: #Predicate {
+                $0.ringID == ringID && $0.metricName == metricName && $0.date >= start && $0.date < end && $0.date <= now
+            }, sortBy: [SortDescriptor(\.date)])
+            try context.enumerate(request, batchSize: 500) { record in
+                try Task.checkCancellation()
+                history.append(RingReading(metric: .steps, value: record.value, date: record.date))
+            }
+            return history
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
     static func recordedClockCalendar(_ calendar: Calendar = .current) -> Calendar {
         var clock = calendar
         clock.timeZone = TimeZone(secondsFromGMT: 0)!

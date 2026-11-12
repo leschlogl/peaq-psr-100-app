@@ -251,6 +251,12 @@ final class HistoryStorageTests: XCTestCase {
         try RingHistoryPersistence.save(readings: [RingReading(metric: .heartRate, value: 72, date: date(10,24))], sleep: [], workouts: [], ringID: "B", context: container.mainContext)
         let days = try await RingSnapshotLoader.availableDashboardDays(container: container, ringID: "A", month: now, now: now, calendar: calendar)
         XCTAssertEqual(days, Set([date(10,23),date(10,25),date(10,26)]))
+        let stepDays = try await RingSnapshotLoader.availableDashboardDays(
+            container: container, ringID: "A", month: now, metric: .steps, now: now, calendar: calendar)
+        XCTAssertEqual(stepDays, [date(10,23)])
+        let steps = try await RingSnapshotLoader.stepHistory(
+            container: container, ringID: "A", days: 7, selectedDay: nil, now: now, calendar: calendar)
+        XCTAssertEqual(steps.buckets.map(\.steps), [300, nil, nil, nil, nil, nil, nil])
         let empty = try await RingSnapshotLoader.availableDashboardDays(container: container, ringID: "A", month: date(8,1), now: now, calendar: calendar)
         XCTAssertTrue(empty.isEmpty)
     }

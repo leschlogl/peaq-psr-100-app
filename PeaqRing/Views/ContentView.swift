@@ -3,7 +3,7 @@ import SwiftData
 import Charts
 import UIKit
 
-private enum RingPalette {
+enum RingPalette {
     static let background = Color(red: 0.035, green: 0.055, blue: 0.065)
     static let card = Color(red: 0.075, green: 0.10, blue: 0.115)
     static let mint = Color(red: 0.53, green: 0.94, blue: 0.76)
@@ -150,25 +150,14 @@ struct DashboardView: View {
             let steps = latest(.steps)
             let stepGoal = max(1, dailyStepGoal)
             let progress = max(0, (steps?.value ?? 0) / Double(stepGoal))
-            ZStack {
-                Circle().stroke(RingPalette.mint.opacity(0.12), lineWidth: 13)
-                Circle().trim(from: 0, to: min(progress, 1))
-                    .stroke(RingPalette.mint, style: StrokeStyle(lineWidth: 13, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                if progress > 1 {
-                    Circle().trim(from: 0, to: min(progress - 1, 1))
-                        .stroke(Color(red: 1, green: 0.82, blue: 0.49), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .padding(13)
-                        .accessibilityHidden(true)
-                }
-                VStack(spacing: 4) {
-                    Image(systemName: "figure.walk").font(.title2).foregroundStyle(RingPalette.mint)
-                    Text(steps.map { $0.value.formatted(.number.precision(.fractionLength(0))) } ?? "—").font(.title2.bold()).contentTransition(.numericText())
-                    Text("of \(stepGoal.formatted()) steps")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-            }.frame(width: 136, height: 136).accessibilityElement(children: .combine)
+            NavigationLink {
+                StepHistoryView(selectedDay: selectedDay)
+            } label: {
+                stepRing(progress: progress, reading: steps, goal: stepGoal)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens step history.")
+            .accessibilityIdentifier("step-history-link")
             VStack(alignment: .leading, spacing: 18) {
                 activityLine(.calories, goal: Double(dailyCalorieGoal), tint: .orange)
                 activityLine(.distance, goal: dailyDistanceGoal, tint: .cyan)
@@ -178,6 +167,30 @@ struct DashboardView: View {
             }
             Spacer(minLength: 0)
         }.padding(22).frame(maxWidth: .infinity).background(RingPalette.card, in: RoundedRectangle(cornerRadius: 26))
+    }
+    private func stepRing(progress: Double, reading: RingReading?, goal: Int) -> some View {
+        ZStack {
+            Circle().stroke(RingPalette.mint.opacity(0.12), lineWidth: 13)
+            Circle().trim(from: 0, to: min(progress, 1))
+                .stroke(RingPalette.mint, style: StrokeStyle(lineWidth: 13, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            if progress > 1 {
+                Circle().trim(from: 0, to: min(progress - 1, 1))
+                    .stroke(Color(red: 1, green: 0.82, blue: 0.49), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .padding(13)
+                    .accessibilityHidden(true)
+            }
+            VStack(spacing: 4) {
+                Image(systemName: "figure.walk").font(.title2).foregroundStyle(RingPalette.mint)
+                Text(reading.map { $0.value.formatted(.number.precision(.fractionLength(0))) } ?? "—").font(.title2.bold()).contentTransition(.numericText())
+                Text("of \(goal.formatted()) steps")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 136, height: 136)
+        .contentShape(Circle())
+        .accessibilityElement(children: .combine)
     }
     private func activityLine(_ metric: RingMetric, goal: Double, tint: Color) -> some View {
         let reading = latest(metric)
@@ -281,7 +294,7 @@ struct DashboardView: View {
     }
 }
 
-private struct HistoryDayPicker: View {
+struct HistoryDayPicker: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var ring: RingBluetooth
     @State private var day: Date
@@ -290,10 +303,12 @@ private struct HistoryDayPicker: View {
     @State private var loadingAvailability = true
     @State private var availabilityFailed = false
     @State private var availabilityContext = ""
+    private let metric: RingMetric?
     let onSelect: (Date) -> Void
-    init(day: Date, onSelect: @escaping (Date) -> Void) {
+    init(day: Date, metric: RingMetric? = nil, onSelect: @escaping (Date) -> Void) {
         _day = State(initialValue: day)
         _visibleMonth = State(initialValue: Calendar.current.dateInterval(of: .month, for: day)!.start)
+        self.metric = metric
         self.onSelect = onSelect
     }
     var body: some View {
@@ -301,14 +316,14 @@ private struct HistoryDayPicker: View {
             VStack(alignment: .leading, spacing: 16) {
                 HistoryAvailabilityCalendar(day: $day, visibleMonth: $visibleMonth, availableDays: availableDays)
                     .fixedSize(horizontal: false, vertical: true)
-                Label("Days with saved dashboard readings", systemImage: "circle.fill")
+                Label(metric == .steps ? "Days with saved step readings" : "Days with saved dashboard readings", systemImage: "circle.fill")
                     .font(.caption).foregroundStyle(.mint)
                 if loadingAvailability {
                     ProgressView("Checking this month…").font(.caption)
                 } else if availabilityFailed {
                     Text("Couldn’t load date markers. You can still choose a date.").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text(availableDays.contains(Calendar.current.startOfDay(for: day)) ? "Saved readings are available for this day." : "No dashboard readings saved for this day.")
+                    Text(availableDays.contains(Calendar.current.startOfDay(for: day)) ? "Saved readings are available for this day." : (metric == nil ? "No dashboard readings saved for this day." : "No readings saved for this day."))
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Text("A dot means some readings were saved, not necessarily a complete day.").font(.caption).foregroundStyle(.secondary)
@@ -326,7 +341,7 @@ private struct HistoryDayPicker: View {
                     if availabilityContext != scope { availableDays = []; availabilityContext = scope }
                     loadingAvailability = true; availabilityFailed = false
                     do {
-                        let days = try await RingSnapshotLoader.availableDashboardDays(container: RingStore.shared.get().container, ringID: ring.selectedID, month: visibleMonth)
+                        let days = try await RingSnapshotLoader.availableDashboardDays(container: RingStore.shared.get().container, ringID: ring.selectedID, month: visibleMonth, metric: metric)
                         guard !Task.isCancelled else { return }
                         availableDays = days
                     } catch {
